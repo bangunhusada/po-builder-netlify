@@ -58,61 +58,66 @@ export default function App() {
  const PrintCSS = (
   <style>{`
     /* A4: 210mm x 297mm */
-    @page { size: A4 portrait; margin: 12mm; }
+    @page { size: A4 portrait; margin: 10mm; }
 
     @media print {
-      /* Hilangkan toolbar/elemen non-print dari layout */
+      /* Bersihkan background & layout global */
+      html, body {
+        background: #fff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .bg-gray-50 { background: #fff !important; }
+
+      /* Sembunyikan semua selain area PO */
       .no-print { display: none !important; }
-
-      /* Sembunyikan semua secara visual */
       body * { visibility: hidden !important; }
-
-      /* Tampilkan hanya area surat pesanan */
       #po-print, #po-print * { visibility: visible !important; }
 
-      /* Keluarkan dari flow TANPA diulang per halaman (pakai absolute, bukan fixed) */
+      /* Tampilkan hanya surat pesanan, tidak ikut flow & tidak diulang */
       #po-print {
-        position: absolute !important;
+        position: absolute !important;             /* tidak ikut layout, tidak diulang */
         top: 0 !important;
         left: 50% !important;
         transform: translateX(-50%) !important;
         margin: 0 !important;
 
-        /* Lebar aman dalam margin A4:
-           174mm + padding 6mm kiri/kanan = 186mm pas dengan @page margin 12mm */
-        width: 174mm !important;
-
+        /* Lebar aman + padding internal pas */
+        width: 170mm !important;                   /* dipersempit sedikit agar tinggi aman */
         box-shadow: none !important;
         border-radius: 0 !important;
         padding: 0 !important;
-        overflow: visible !important;
+
+        /* Pastikan TIDAK memicu halaman 2 kosong */
+        max-height: 270mm !important;              /* (297 - 2*10) = 277mm → beri buffer */
+        overflow: hidden !important;               /* potong overflow jika melebihi */
       }
 
-      /* Ganti padding container (tailwind p-6) saat print */
+      /* Ganti padding kontainer (tailwind p-6) saat print */
       #po-print .p-6 { padding: 6mm !important; }
 
-      /* Tipografi dipadatkan agar muat 1 halaman */
-      #po-print { font-size: 11px !important; }
+      /* Padatkan tipografi supaya pasti muat 1 halaman */
+      #po-print { font-size: 10.75px !important; }
       #po-print h2 { font-size: 16px !important; }
       #po-print .text-xl { font-size: 16px !important; }
       #po-print .text-2xl { font-size: 18px !important; }
 
-      /* Tabel rapat & stabil */
+      /* Tabel padat & stabil */
       #po-print table { table-layout: fixed; width: 100%; border-collapse: collapse; }
       #po-print th, #po-print td { padding: 3px 6px !important; }
       #po-print th { font-weight: 600; }
 
-      /* Hindari patah pada bagian tabel saja */
+      /* Hindari patah di bagian tabel */
       table, thead, tbody, tr, th, td, img {
         break-inside: avoid;
         page-break-inside: avoid;
       }
-
-      /* Warna */
-      html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   `}</style>
 );
+
 
  
  
