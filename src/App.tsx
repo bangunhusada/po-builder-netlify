@@ -53,14 +53,35 @@ function Select({ label, value, onChange, options, className = "" }: any) {
 
 /** ============== APP (DEFAULT EXPORT) ============== */
 export default function App() {
-  // Print CSS A4: hanya panel preview yang tercetak (no-print disembunyikan)
+  // Print CSS A4: hanya panel #po-print yang tercetak
   const PrintCSS = (
     <style>{`
       @page { size: A4 portrait; margin: 12mm; }
       @media print {
-        .no-print { display: none !important; }
-        .print-page { box-shadow: none !important; padding: 0 !important; width: 100%; }
-        .print-page, table, tr, img { break-inside: avoid; page-break-inside: avoid; }
+        /* Sembunyikan SEMUA elemen saat print */
+        body * { visibility: hidden !important; }
+
+        /* Tampilkan hanya area surat pesanan */
+        #po-print, #po-print * {
+          visibility: visible !important;
+        }
+
+        /* Pastikan posisi & ukuran pas */
+        #po-print {
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 100% !important;
+          box-shadow: none !important;
+          padding: 0 !important;
+        }
+
+        /* Hindari patah halaman */
+        #po-print, table, thead, tbody, tr, th, td, img {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       }
     `}</style>
@@ -419,7 +440,7 @@ export default function App() {
 
         {/* ===== PREVIEW SIDE ===== */}
         <section>
-          <div className="print-page bg-white shadow-sm rounded-2xl p-6">
+          <div id="po-print" className="print-page bg-white shadow-sm rounded-2xl p-6">
             {/* Kop */}
             <div className="flex items-start gap-4">
               {header.logoUrl ? (
@@ -436,7 +457,7 @@ export default function App() {
                 <div className="text-xl font-bold tracking-wide">{typeUpper(poType)}</div>
               </div>
             </div>
-            <div className="w-full h-px bg-gray-400 my-2"></div>
+            {line}
 
             <div className="text-center text-sm">
               <div><span className="font-medium">Nomor SP : </span><span>{header.nomorSP}</span></div>
