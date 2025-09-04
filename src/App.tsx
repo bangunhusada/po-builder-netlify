@@ -60,59 +60,56 @@ export default function App() {
     @page { size: A4 portrait; margin: 12mm; }
 
     @media print {
-      /* Sembunyikan semua di luar area PO */
+      /* SEMBUNYIKAN elemen tertentu pakai display agar tidak ambil tempat */
+      .no-print { display: none !important; }
+
+      /* Sembunyikan semua elemen secara visual */
       body * { visibility: hidden !important; }
+
+      /* TAMPILKAN hanya area surat pesanan */
       #po-print, #po-print * { visibility: visible !important; }
 
-      /* Reset global */
-      html, body {
-        margin: 0 !important;
-        padding: 0 !important;
-        height: auto !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-
-      /* Kunci lebar + hilangkan shadow/border-radius saat print */
-      /* Lebar 180mm + padding 6mm kiri/kanan = 192mm (<= 210 - 2*12 = 186mm)? 
-         Agar pasti muat, kita jadikan width 174mm + padding 6mm = 186mm pas. */
+      /* Keluarkan dari flow supaya nempel di halaman pertama (hilangkan page kosong) */
       #po-print {
-        position: static !important;
-        width: 174mm !important;
+        position: fixed !important;   /* kunci di posisi layar */
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
         margin: 0 auto !important;
+
+        /* Lebar aman dalam margin A4: 174mm + padding 6mm kiri/kanan = 186mm */
+        width: 174mm !important;
         box-shadow: none !important;
         border-radius: 0 !important;
         padding: 0 !important;
-        overflow: visible !important;
-        page-break-before: auto !important;
-        page-break-after: avoid !important;   /* cegah halaman kosong setelahnya */
       }
 
-      /* Gantikan padding .p-6 saat print -> 6mm (kiri/kanan + atas/bawah) */
+      /* Ganti padding kontainer (tailwind p-6) saat print */
       #po-print .p-6 { padding: 6mm !important; }
 
-      /* Tipografi sedikit diperkecil agar tinggi total aman 1 halaman */
+      /* Tipografi dipadatkan agar 1 halaman */
       #po-print { font-size: 11px !important; }
       #po-print h2 { font-size: 16px !important; }
       #po-print .text-xl { font-size: 16px !important; }
       #po-print .text-2xl { font-size: 18px !important; }
 
-      /* Tabel padat & stabil */
+      /* Tabel lebih rapat dan stabil */
       #po-print table { table-layout: fixed; width: 100%; border-collapse: collapse; }
       #po-print th, #po-print td { padding: 3px 6px !important; }
       #po-print th { font-weight: 600; }
 
-      /* Hindari patah di elemen penting TAPI jangan di root-nya (#po-print) */
+      /* Hindari patah di elemen penting */
       table, thead, tbody, tr, th, td, img {
         break-inside: avoid;
         page-break-inside: avoid;
       }
+
+      /* Warna */
+      html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   `}</style>
 );
 
- 
- 
  
   // === Netlify Functions mode (aktifkan Sheets tombol & fitur)
   const hasSheets = true;
@@ -313,7 +310,7 @@ export default function App() {
       {PrintCSS}
       {/* Toolbar (tidak dicetak) */}
       <div className="no-print sticky top-0 z-10 border-b bg-white/80 backdrop-blur px-4 py-3 flex items-center gap-2">
-        <h1 className="text-lg font-semibold">Purchase Order – Builder (Lengkap)</h1>
+        <h1 className="text-lg font-semibold">Purchase Order – Farmasi</h1>
         <div className="ml-auto flex gap-2">
           <button onClick={newPO} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">PO Baru</button>
           <button onClick={addRow} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Tambah Baris</button>
