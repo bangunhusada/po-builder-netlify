@@ -122,8 +122,8 @@ export default function App() {
     ttdUrl: "https://iili.io/KBb62lS.png", // <- TTD Anda
     ttdHeightMm: 22,      // tinggi maksimal gambar (hanya memengaruhi gambar)
     ttdAreaHeightMm: 18,  // JARAK tetap antara 'Pemesan' dan nama (spacer)
-    ttdX: 0,              // posisi X (px) relatif ke kotak TTD
-    ttdY: 0,              // posisi Y (px)
+    ttdX: 171,              // posisi X (px) relatif ke kotak TTD
+    ttdY: 43,              // posisi Y (px)
     ttdScale: 1           // skala (1 = 100%)
   } as any);
 
