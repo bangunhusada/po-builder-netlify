@@ -313,4 +313,373 @@ export default function App() {
         <h1 className="text-lg font-semibold">Purchase Order – Builder (Lengkap)</h1>
         <div className="ml-auto flex gap-2">
           <button onClick={newPO} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">PO Baru</button>
-          <button onClick={addRow} className="px-3 py-2 rounded-xl shadow text-sm border h
+          <button onClick={addRow} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Tambah Baris</button>
+          <button onClick={()=> setFavOpen(true)} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Favorit</button>
+          <button onClick={()=> setZOpen(true)} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Kelola Zat Aktif</button>
+          <button onClick={()=> { setHistoryOpen(true); loadHistory(); }} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Riwayat</button>
+          {hasSheets && (
+            <button onClick={saveToGoogleSheets} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Simpan ke Google Sheets</button>
+          )}
+          <button onClick={printDoc} className="px-3 py-2 rounded-xl shadow text-sm bg-black text-white hover:opacity-90">Cetak / Simpan PDF</button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 p-4">
+        {/* ===== FORM ===== */}
+        <section className="space-y-6">
+          <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded-xl px-3 py-2 flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium">Mode fokus pengisian</div>
+              <div className="text-xs">Bagian Identitas, Pemesan, dan Kebutuhan Faskes disembunyikan agar fokus ke Tujuan PBF & Daftar Item.</div>
+            </div>
+            <button onClick={()=> setShowMeta(v=>!v)} className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50">{showMeta ? 'Sembunyikan' : 'Edit identitas'}</button>
+          </div>
+
+          <Card title="Jenis Purchase Order">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Select label="Jenis PO" value={poType} onChange={setPoType} options={["Reguler","Prekursor","Obat-obat tertentu"]} />
+            </div>
+          </Card>
+
+          {showMeta && (
+            <Card title="Identitas Fasilitas Kesehatan">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Input label="Judul Dokumen" value={header.judul} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{judul:v}))} />
+                <Input label="Nama Faskes" value={header.namaFaskes} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{namaFaskes:v}))} />
+                <Input label="Izin" value={header.izin} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{izin:v}))} />
+                <Input label="Telp" value={header.telp} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{telp:v}))} />
+                <Input label="Alamat" className="md:col-span-2" value={header.alamat} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{alamat:v}))} />
+                <Input label="Logo URL (opsional)" className="md:col-span-2" value={header.logoUrl} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{logoUrl:v}))} />
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                  <Input label="Nomor SP" value={header.nomorSP} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{nomorSP:v}))} />
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={spAuto} onChange={(e)=> setSpAuto((e.target as HTMLInputElement).checked)} />
+                    Nomor SP otomatis (per jenis)
+                  </label>
+                  <div className="flex gap-2">
+                    <button onClick={decrementSp} className="px-3 py-2 rounded-xl border text-sm">Turunkan Nomor SP</button>
+                    <button onClick={incrementSp} className="px-3 py-2 rounded-xl border text-sm">Naikkan Nomor SP</button>
+                  </div>
+                </div>
+                <div className="md:col-span-2 text-xs text-gray-700 mt-1">
+                  Status lokal: {isSpUsedLocal ? <span className="text-red-600">Duplikat</span> : <span className="text-green-700">Unik</span>}
+                  {hasSheets && (<>
+                    {' · '}<button onClick={()=> checkSpUniqueRemote(header.nomorSP)} className="underline">Cek unik ke Sheets</button>
+                    {spRemoteStatus && <> — {spRemoteStatus}</>}
+                  </>)}
+                </div>
+              </div>
+            </Card>
+          )}
+
+          <Card title="Mengajukan pesanan obat kepada">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end mb-2">
+              <label className="block">
+                <span className="text-xs text-gray-600">Template PBF</span>
+                <select onChange={(e)=> { const i = parseInt((e.target as HTMLSelectElement).value,10); if(!isNaN(i) && i>=0) applyPbfTemplate(i); (e.target as HTMLSelectElement).value='-1'; }} defaultValue="-1" className="mt-1 w-full rounded-xl border px-3 py-2 text-sm bg-white">
+                  <option value="-1">-- Pilih Template --</option>
+                  {pbfTemplates.map((t:any,i:number)=> (<option key={i} value={i}>{t.nama||('Template '+(i+1))}</option>))}
+                </select>
+              </label>
+              <button onClick={saveCurrentPbfAsTemplate} className="px-3 py-2 rounded-xl border text-sm">Simpan sebagai Template</button>
+              <button onClick={()=> setPbfOpen(true)} className="px-3 py-2 rounded-xl border text-sm">Kelola Template</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Input label="Nama PBF" value={pbf.nama} onChange={(v:string)=> setPbf({...pbf, nama:v})} />
+              <Input label="Telepon" value={pbf.telp} onChange={(v:string)=> setPbf({...pbf, telp:v})} />
+              <Input label="Alamat" className="md:col-span-2" value={pbf.alamat} onChange={(v:string)=> setPbf({...pbf, alamat:v})} />
+            </div>
+          </Card>
+
+          <Card title="Daftar Item">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs text-gray-600">Kelola item</div>
+              <div className="flex gap-2">
+                <button onClick={()=> setFavOpen(true)} className="text-xs px-2 py-1 border rounded-lg">Tambah dari Favorit</button>
+                <button onClick={addRow} className="text-xs px-2 py-1 border rounded-lg">Tambah Baris</button>
+              </div>
+            </div>
+            <div className="space-y-4">
+              {items.map((it, idx) => (
+                <div key={idx} className="grid grid-cols-12 gap-2 items-end">
+                  <div className="col-span-12 md:col-span-4">
+                    <Input label={`Nama Obat #${idx+1}`} placeholder="Nama Obat" value={it.nama} onChange={(v:string)=> handleItemChange(idx, 'nama', v)} />
+                  </div>
+                  {poType !== "Reguler" && (
+                    <div className="col-span-6 md:col-span-2">
+                      <Select label="Zat Aktif" value={it.zatAktif || ''} onChange={(v:string)=> handleItemChange(idx, 'zatAktif', v)} options={zatOptions} />
+                    </div>
+                  )}
+                  <div className="col-span-6 md:col-span-3">
+                    <Input label="Bentuk & Kekuatan" value={it.bentukKekuatan} onChange={(v:string)=> handleItemChange(idx, 'bentukKekuatan', v)} />
+                  </div>
+                  <div className="col-span-4 md:col-span-1">
+                    <Input label="Satuan" value={it.satuan} onChange={(v:string)=> handleItemChange(idx, 'satuan', v)} />
+                  </div>
+                  <div className="col-span-4 md:col-span-1">
+                    <Input label="Jumlah" placeholder="Jumlah" value={String(it.jumlah || '')} onChange={(v:string)=> handleItemChange(idx, 'jumlah', v)} />
+                  </div>
+                  <div className="col-span-4 md:col-span-1">
+                    <Input label="Ket" value={it.ket} onChange={(v:string)=> handleItemChange(idx, 'ket', v)} />
+                  </div>
+                  <div className="col-span-12 flex justify-between gap-2">
+                    <button onClick={()=> saveFavFromRow(idx)} className="text-xs px-2 py-1 border rounded-lg">Simpan ke Favorit</button>
+                    <div className="flex gap-2">
+                      <button onClick={addRow} className="text-xs px-2 py-1 border rounded-lg">Tambah</button>
+                      {items.length > 1 && (
+                        <button onClick={()=> delRow(idx)} className="text-xs px-2 py-1 border rounded-lg">Hapus</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </section>
+
+        {/* ===== PREVIEW (YANG DICETAK) ===== */}
+        <section>
+          <div id="po-print" className="print-page bg-white shadow-sm rounded-2xl p-6">
+            {/* Kop */}
+            <div className="flex items-start gap-4">
+              {header.logoUrl ? (
+                <img src={header.logoUrl} alt="Logo" className="w-16 h-16 rounded-full object-contain border" />
+              ) : (
+                <div className="shrink-0 w-16 h-16 rounded-full border grid place-items-center text-xs text-gray-500">LOGO</div>
+              )}
+              <div className="grow">
+                <h2 className="font-semibold text-xl tracking-wide">{header.namaFaskes}</h2>
+                <p className="text-sm leading-snug">{header.izin}<br/>{header.alamat}<br/>{header.telp}</p>
+              </div>
+              <div className="ml-auto text-right">
+                <div className="text-2xl font-extrabold leading-tight">{header.judul || 'SURAT PESANAN'}</div>
+                <div className="text-xl font-bold tracking-wide">{typeUpper(poType)}</div>
+              </div>
+            </div>
+            {line}
+
+            <div className="text-center text-sm">
+              <div><span className="font-medium">Nomor SP : </span><span>{header.nomorSP}</span></div>
+            </div>
+
+            {/* Pemesan */}
+            <div className="mt-4 text-sm space-y-1">
+              <p><span className="inline-block w-56">Yang bertanda tangan di bawah ini</span>:</p>
+              <div className="grid grid-cols-[auto_1fr] gap-x-2">
+                <span>Nama</span><span>: {pemesan.nama}</span>
+                <span>Jabatan</span><span>: {pemesan.jabatan}</span>
+                <span>Nomor SIPA</span><span>: {pemesan.sipa}</span>
+              </div>
+            </div>
+
+            {/* Tujuan */}
+            <div className="mt-4 text-sm space-y-1">
+              <p>Mengajukan pesanan obat kepada :</p>
+              <div className="grid grid-cols-[auto_1fr] gap-x-2">
+                <span>Nama PBF</span><span>: {pbf.nama}</span>
+                <span>Alamat</span><span>: {pbf.alamat}</span>
+                <span>Telp.</span><span>: {pbf.telp || '-'}</span>
+              </div>
+            </div>
+
+            {/* Tabel */}
+            <div className="mt-4">
+              <table className="w-full text-xs border border-black">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="p-2 border border-black w-10">No</th>
+                    <th className="p-2 border border-black">Nama Obat</th>
+                    {poType !== "Reguler" && <th className="p-2 border border-black">Zat Aktif</th>}
+                    <th className="p-2 border border-black">Bentuk dan Kekuatan</th>
+                    <th className="p-2 border border-black">Satuan</th>
+                    <th className="p-2 border border-black">Jumlah</th>
+                    <th className="p-2 border border-black">Ket</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((it, i) => (
+                    <tr key={i}>
+                      <td className="p-2 border border-black text-center">{i + 1}</td>
+                      <td className="p-2 border border-black text-left">{it.nama || ''}</td>
+                      {poType !== "Reguler" && <td className="p-2 border border-black text-left">{it.zatAktif || ''}</td>}
+                      <td className="p-2 border border-black text-left">{it.bentukKekuatan || ''}</td>
+                      <td className="p-2 border border-black text-center">{it.satuan || ''}</td>
+                      <td className="p-2 border border-black text-center">{formatJumlah(it.jumlah)}</td>
+                      <td className="p-2 border border-black text-left">{it.ket || ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Kebutuhan */}
+            <div className="mt-4 text-sm space-y-1">
+              <p>Obat tersebut akan digunakan untuk memenuhi kebutuhan :</p>
+              <div className="grid grid-cols-[auto_1fr] gap-x-2">
+                <span>Nama Klinik</span><span>: {kebutuhan.namaKlinik}</span>
+                <span>Alamat</span><span>: {kebutuhan.alamat}</span>
+                <span>No. Izin</span><span>: {kebutuhan.noIzin}</span>
+              </div>
+            </div>
+
+            {/* Tanda tangan */}
+            <div className="mt-8 text-sm">
+              <div className="flex justify-end">
+                <div className="w-80 text-center">
+                  <p>{tanggalTempat.tempat}, {tanggalTempat.tanggal}</p>
+                  <p>Pemesan</p>
+                  <div className="h-16" />
+                  <p className="font-semibold">{pemesan.nama}</p>
+                  <p className="text-xs">SIPA : {pemesan.sipa}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Status simpan */}
+            {netStatus && <p className="mt-4 text-xs text-gray-600">{netStatus}</p>}
+          </div>
+        </section>
+      </div>
+
+      {/* ===== Modal/Panel Favorit, Zat Aktif, Template PBF, Riwayat ===== */}
+      {/* Favorit */}
+      {favOpen && (
+        <div className="fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/30" onClick={()=> setFavOpen(false)} />
+          <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-4 overflow-y-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-lg font-semibold">Favorit Item</h3>
+              <div className="ml-auto"><button onClick={()=> setFavOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button></div>
+            </div>
+            {favorites.length===0 ? (
+              <p className="text-sm text-gray-600">Belum ada favorit. Gunakan tombol <b>Simpan ke Favorit</b> pada baris item.</p>
+            ) : (
+              <div className="space-y-2">
+                {favorites.map((f,i)=> (
+                  <div key={i} className="border rounded-xl p-3 text-sm flex items-center gap-2">
+                    <div className="flex-1">
+                      <div className="font-medium">{f.nama}</div>
+                      <div className="text-xs text-gray-600">{f.zatAktif ? ('Zat aktif: '+f.zatAktif+' · ') : ''}{f.bentukKekuatan} · {f.satuan} · Jml: {String(f.jumlah||'')}</div>
+                    </div>
+                    <button onClick={()=> addFromFavorite(i)} className="px-2 py-1 border rounded-lg text-xs">Tambah ke Item</button>
+                    <button onClick={()=> deleteFavorite(i)} className="px-2 py-1 border rounded-lg text-xs">Hapus</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Kelola Zat Aktif */}
+      {zOpen && (
+        <div className="fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/30" onClick={()=> setZOpen(false)} />
+          <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-4 overflow-y-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-lg font-semibold">Kelola Zat Aktif</h3>
+              <div className="ml-auto"><button onClick={()=> setZOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Prekursor */}
+              <div>
+                <h4 className="font-medium mb-2">Prekursor (Tambah/Ubah)</h4>
+                <div className="space-y-2">
+                  {preList.length === 0 && <div className="text-xs text-gray-500">Belum ada item.</div>}
+                  {preList.map((v,i)=> (
+                    <div key={i} className="flex items-center gap-2">
+                      <input value={v} onChange={(e)=> setPreList(p=>{ const c=p.slice(); c[i]=(e.target as HTMLInputElement).value; return c; })} className="flex-1 rounded-xl border px-3 py-2 text-sm" />
+                      <button onClick={()=> setPreList(p=> p.filter((_,idx)=> idx!==i))} className="px-2 py-2 border rounded-lg text-xs">Hapus</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* OOT */}
+              <div>
+                <h4 className="font-medium mb-2">Obat-obat Tertentu (Tambah/Ubah)</h4>
+                <div className="space-y-2">
+                  {ootList.length === 0 && <div className="text-xs text-gray-500">Belum ada item.</div>}
+                  {ootList.map((v,i)=> (
+                    <div key={i} className="flex items-center gap-2">
+                      <input value={v} onChange={(e)=> setOotList(p=>{ const c=p.slice(); c[i]=(e.target as HTMLInputElement).value; return c; })} className="flex-1 rounded-xl border px-3 py-2 text-sm" />
+                      <button onClick={()=> setOotList(p=> p.filter((_,idx)=> idx!==i))} className="px-2 py-2 border rounded-lg text-xs">Hapus</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <p className="mt-6 text-xs text-gray-500">Perubahan tersimpan otomatis di perangkat ini (localStorage).</p>
+          </div>
+        </div>
+      )}
+
+      {/* Kelola Template PBF */}
+      {pbfOpen && (
+        <div className="fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/30" onClick={()=> setPbfOpen(false)} />
+          <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-4 overflow-y-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-lg font-semibold">Kelola Template PBF</h3>
+              <div className="ml-auto"><button onClick={()=> setPbfOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button></div>
+            </div>
+            {pbfTemplates.length===0 && <p className="text-sm text-gray-600">Belum ada template. Isi data PBF lalu klik <b>Simpan sebagai Template</b>.</p>}
+            <div className="space-y-3">
+              {pbfTemplates.map((t,i)=> (
+                <div key={i} className="border rounded-xl p-3 text-sm grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+                  <Input label="Nama" value={t.nama} onChange={(v:string)=> renamePbfTemplate(i,'nama',v)} />
+                  <Input label="Telepon" value={t.telp} onChange={(v:string)=> renamePbfTemplate(i,'telp',v)} />
+                  <Input label="Alamat" className="md:col-span-3" value={t.alamat} onChange={(v:string)=> renamePbfTemplate(i,'alamat',v)} />
+                  <div className="md:col-span-3 flex justify-end gap-2">
+                    <button onClick={()=> applyPbfTemplate(i)} className="px-2 py-1 border rounded-lg text-xs">Gunakan</button>
+                    <button onClick={()=> deletePbfTemplate(i)} className="px-2 py-1 border rounded-lg text-xs">Hapus</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Riwayat (Sheets) */}
+      {historyOpen && (
+        <div className="fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/30" onClick={()=> setHistoryOpen(false)} />
+          <div className="absolute right-0 top-0 h-full w-full max-w-3xl bg-white shadow-xl p-4 overflow-y-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-lg font-semibold">Riwayat (Google Sheets)</h3>
+              <div className="ml-auto"><button onClick={()=> setHistoryOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button></div>
+            </div>
+            {historyLoading && <p className="text-sm">Memuat...</p>}
+            {historyError && <p className="text-sm text-red-600">Error: {historyError}</p>}
+            {!historyLoading && !historyError && (
+              <table className="w-full text-sm border">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="p-2 border">Tanggal</th>
+                    <th className="p-2 border">Nomor SP</th>
+                    <th className="p-2 border">Jenis</th>
+                    <th className="p-2 border">Ringkasan</th>
+                    <th className="p-2 border">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historyRows.map((r:any) => (
+                    <tr key={r.idx}>
+                      <td className="p-2 border">{r.tanggal}</td>
+                      <td className="p-2 border">{r.nomorSP}</td>
+                      <td className="p-2 border">{r.jenis}</td>
+                      <td className="p-2 border">{r.ringkasan}</td>
+                      <td className="p-2 border">
+                        <button onClick={()=> restoreFromRow(r)} className="px-2 py-1 border rounded-lg text-xs">Pulihkan</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
