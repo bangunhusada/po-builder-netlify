@@ -61,41 +61,42 @@ export default function App() {
     @page { size: A4 portrait; margin: 12mm; }
 
     @media print {
-      /* Sembunyikan seluruh halaman, tapi jangan pakai display:none agar layout tidak runtuh */
-      body { visibility: hidden !important; margin: 0 !important; }
+      /* Sembunyikan seluruh halaman, tapi biarkan layout tetap ada */
+      html, body { visibility: hidden !important; margin: 0 !important; padding: 0 !important; }
 
-      /* Tampilkan hanya area PO */
+      /* Tampilkan hanya #po-print */
       #po-print, #po-print * { visibility: visible !important; }
 
-      /* Letakkan PO tepat di halaman cetak */
+      /* Letakkan di paling atas halaman cetak (bukan fixed agar tidak diulang) */
       #po-print {
-        position: fixed !important;   /* lepas dari layout app */
-        left: 0 !important;
+        position: absolute !important;   /* <— bukan fixed */
         top: 0 !important;
-        width: 186mm !important;      /* lebar aman A4 (210 - 2*12) */
-        margin: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        margin: 0 auto !important;
+        width: 186mm !important;         /* lebar aman A4 (210 - 2×12mm) */
         padding: 0 !important;
         box-shadow: none !important;
         background: #fff !important;
+        page-break-after: avoid !important;
       }
 
-      /* Rapikan tabel saat print */
+      /* Rapikan tabel */
       #po-print table { border-collapse: collapse !important; }
       #po-print th, #po-print td { border: 1px solid #000 !important; }
 
-      /* Hindari patahan halaman aneh */
+      /* Hindari pecah baris aneh */
       #po-print, #po-print table, #po-print tr, #po-print img {
         break-inside: avoid;
         page-break-inside: avoid;
       }
 
-      /* Pastikan warna muncul */
+      /* Warna/garis tampil saat print */
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   `}</style>
 );
 
- 
  
 
   /** ====== FLAGS ====== */
