@@ -53,7 +53,7 @@ function Select({ label, value, onChange, options, className = "" }: any) {
 
 /** ============== APP (DEFAULT EXPORT) ============== */
 export default function App() {
-  // Print CSS A4: hanya panel PO yang tercetak (pakai clone supaya tidak blank/dua halaman)
+  /** ====== PRINT CSS (A4, clone-only) ====== */
   const PrintCSS = (
     <style>{`
       @page { size: A4 portrait; margin: 12mm; }
@@ -64,8 +64,7 @@ export default function App() {
           print-color-adjust: exact;
           background: #fff !important;
         }
-
-        /* Saat mode .printing aktif, sembunyikan semua kecuali #print-clone */
+        /* Sembunyikan semua saat print, kecuali clone */
         .printing * { display: none !important; }
 
         .printing #print-clone,
@@ -74,19 +73,17 @@ export default function App() {
           visibility: visible !important;
         }
 
-        /* Tata letak clone agar satu halaman A4 */
         #print-clone {
           position: fixed !important;
-          inset: 0 !important;           /* top/right/bottom/left: 0 */
+          inset: 0 !important;
           margin: auto !important;
-          width: 186mm !important;       /* aman utk margin 12mm kiri–kanan */
+          width: 186mm !important;   /* aman utk margin kiri-kanan 12mm */
           background: #fff !important;
           box-shadow: none !important;
           border-radius: 0 !important;
           padding: 0 !important;
         }
 
-        /* Hindari pecah tabel/elemen */
         #print-clone table,
         #print-clone thead,
         #print-clone tbody,
@@ -98,19 +95,16 @@ export default function App() {
           page-break-inside: avoid;
         }
 
-        /* Kelas util print */
         .avoid-break { break-inside: avoid; page-break-inside: avoid; }
-        .sig-box { display:flex; align-items:center; justify-content:center; overflow:visible!important; }
-        .sig-img { margin:0 auto; }
         .select-none { user-select: none; }
       }
     `}</style>
   );
 
-  // === Netlify Functions mode (aktifkan Sheets tombol & fitur)
-  const hasSheets = true;
+  /** ====== FLAGS ====== */
+  const hasSheets = true; // Netlify Functions untuk Google Sheets
 
-  // === State utama ===
+  /** ====== STATE UTAMA ====== */
   const [poType, setPoType] = useState("Prekursor"); // Reguler | Prekursor | Obat-obat tertentu
   const [spAuto, setSpAuto] = useState(true);
   const [showMeta, setShowMeta] = useState(false);
@@ -122,15 +116,15 @@ export default function App() {
     telp: "Telp : (0274) 488314",
     judul: "SURAT PESANAN",
     nomorSP: "",
-    logoUrl: "https://iili.io/KBiv0xa.png", // opsional URL logo
+    logoUrl: "https://iili.io/KBiv0xa.png",
 
-    // ===== TTD (gambar/scan) =====
-    ttdUrl: "",          // URL PNG tanda tangan (atau dataURL)
-    ttdHeightMm: 24,     // tinggi maksimal gambar tanda tangan (berpengaruh hanya pada gambar)
-    ttdAreaHeightMm: 28, // tinggi RUANG TTD (spacer) agar jarak 'Pemesan' ↔ nama tetap
-    ttdX: 0,             // posisi X (px) relatif kotak TTD
-    ttdY: 0,             // posisi Y (px)
-    ttdScale: 1,         // skala (1 = 100%)
+    /** ===== TTD (gambar/scan) ===== */
+    ttdUrl: "https://iili.io/KBb62lS.png", // <- TTD Anda
+    ttdHeightMm: 22,      // tinggi maksimal gambar (hanya memengaruhi gambar)
+    ttdAreaHeightMm: 18,  // JARAK tetap antara 'Pemesan' dan nama (spacer)
+    ttdX: 0,              // posisi X (px) relatif ke kotak TTD
+    ttdY: 0,              // posisi Y (px)
+    ttdScale: 1           // skala (1 = 100%)
   } as any);
 
   const [pemesan, setPemesan] = useState({
@@ -156,7 +150,7 @@ export default function App() {
     { nama: "", zatAktif: "", bentukKekuatan: "", satuan: "", jumlah: "", ket: "" },
   ]);
 
-  // === Nomor SP Otomatis (REG/PRE/OOT + MM/YYYY) ===
+  /** ====== NOMOR SP ====== */
   function typeCode(t: string) {
     const s = String(t || "").toLowerCase();
     if (s.indexOf("pre") === 0) return "PRE";
@@ -213,7 +207,7 @@ export default function App() {
     setHeader((h:any) => Object.assign({}, h, { nomorSP: makeSpNumber(next, now) }));
   }
 
-  // === ZAT AKTIF: default + editable list (localStorage) ===
+  /** ====== ZAT AKTIF (localStorage) ====== */
   const DEFAULT_PREKURSOR = [
     "Pseudoefedrin","Efedrin","Norefedrin","Ergometrin","Ergotamin","Anhidrida Asetat","Kalium Permanganat","Phenylpropanolamine HCl"
   ];
@@ -236,7 +230,7 @@ export default function App() {
     return base;
   }, [optionsZatAktif]);
 
-  // Panel kelola daftar (tambah/ubah/hapus + reset)
+  /** ====== PANEL KELola LIST ====== */
   const [zOpen, setZOpen] = useState(false);
   const [preNew, setPreNew] = useState("");
   const [ootNew, setOotNew] = useState("");
@@ -248,7 +242,7 @@ export default function App() {
   function renameOOT(i:number, val:string){ setOotList(p => { const c=p.slice(); c[i]=val; return dedup(c); }); }
   function resetZat(){ if (confirm("Kembalikan daftar ke bawaan? (Semua perubahan akan dihapus)")) { setPreList(dedup(DEFAULT_PREKURSOR)); setOotList(dedup(DEFAULT_OOT)); } }
 
-  // ===== FAVORIT ITEM (localStorage) =====
+  /** ====== FAVORIT ITEM ====== */
   const [favOpen, setFavOpen] = useState(false);
   const [favorites, setFavorites] = useState<any[]>(() => { try { const v = JSON.parse(localStorage.getItem('fav-items') || 'null'); return Array.isArray(v) ? v : []; } catch { return []; } });
   useEffect(() => { try { localStorage.setItem('fav-items', JSON.stringify(favorites)); } catch {} }, [favorites]);
@@ -256,7 +250,7 @@ export default function App() {
   function addFromFavorite(i:number){ const f = favorites[i]; if(!f) return; setItems(prev => prev.concat([Object.assign({}, f)])); }
   function deleteFavorite(i:number){ setFavorites(prev => prev.filter((_, idx) => idx !== i)); }
 
-  // ===== TEMPLATE PBF (localStorage) =====
+  /** ====== TEMPLATE PBF ====== */
   const [pbfOpen, setPbfOpen] = useState(false);
   const [pbfTemplates, setPbfTemplates] = useState<any[]>(() => { try { const v = JSON.parse(localStorage.getItem('pbf-templates') || 'null'); return Array.isArray(v) ? v : []; } catch { return []; } });
   useEffect(() => { try { localStorage.setItem('pbf-templates', JSON.stringify(pbfTemplates)); } catch {} }, [pbfTemplates]);
@@ -265,7 +259,7 @@ export default function App() {
   function deletePbfTemplate(i:number){ setPbfTemplates(prev => prev.filter((_, idx) => idx !== i)); }
   function renamePbfTemplate(i:number, field:string, val:string){ setPbfTemplates(prev => { const c = prev.slice(); if(!c[i]) return prev; c[i] = Object.assign({}, c[i], { [field]: val }); return c; }); }
 
-  // ===== Nomor SP Kunci Unik =====
+  /** ====== NOMOR SP UNIK (lokal & remote) ====== */
   const [spRemoteStatus, setSpRemoteStatus] = useState('');
   function loadUsedSpLocal(){ try { const v = JSON.parse(localStorage.getItem('sp-used-local') || '[]'); return Array.isArray(v) ? new Set(v) : new Set(); } catch { return new Set(); } }
   function saveUsedSpLocal(setv:Set<string>){ try { localStorage.setItem('sp-used-local', JSON.stringify(Array.from(setv))); } catch {} }
@@ -274,13 +268,13 @@ export default function App() {
   function markSpUsedLocal(num?:string){ const s = loadUsedSpLocal(); if(num) { s.add(num); saveUsedSpLocal(s); } }
   async function checkSpUniqueRemote(num?:string){ if(!hasSheets) { setSpRemoteStatus(''); return true; } try { setSpRemoteStatus('Memeriksa...'); const res = await fetch('/.netlify/functions/sheets-check-unique?num=' + encodeURIComponent(num || '')); const data = await res.json(); const dup = !!data.duplicate; setSpRemoteStatus(dup ? 'Duplikat di Sheets' : 'Unik di Sheets'); return !dup; } catch(e:any){ setSpRemoteStatus('Gagal cek: ' + (e.message || String(e))); return true; } }
 
-  // Items
+  /** ====== ITEMS ====== */
   function addRow(){ setItems(prev => prev.concat([{ nama: "", zatAktif: "", bentukKekuatan: "", satuan: "", jumlah: "", ket: "" }])); }
   function delRow(idx:number){ setItems(prev => prev.filter((_,i)=> i!==idx)); }
   function handleItemChange(idx:number, key:string, value:any){ setItems(prev => prev.map((it,i)=> i===idx ? Object.assign({}, it, { [key]: value }) : it)); }
   const showZatAktif = poType !== "Reguler";
 
-  // Google Sheets (Netlify Functions)
+  /** ====== GOOGLE SHEETS (Netlify Functions) ====== */
   const [netStatus, setNetStatus] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyRows, setHistoryRows] = useState<any[]>([]);
@@ -291,7 +285,7 @@ export default function App() {
   async function loadHistory(){ try { setHistoryLoading(true); setHistoryError(""); const res = await fetch("/.netlify/functions/sheets-history"); const data = await res.json(); if (data && data.error) throw new Error(data.error.message||"Gagal memuat"); const rows = (data.rows || []) as any[]; setHistoryRows(rows); } catch(e:any){ console.error(e); setHistoryError(e.message||String(e)); } finally { setHistoryLoading(false); } }
   function restoreFromRow(row:any){ try { if (row && row.json) { const parsed = JSON.parse(row.json); if (parsed.poType) setPoType(parsed.poType); if (parsed.header) setHeader(parsed.header); if (parsed.pemesan) setPemesan(parsed.pemesan); if (parsed.pbf) setPbf(parsed.pbf); if (parsed.kebutuhan) setKebutuhan(parsed.kebutuhan); if (parsed.tanggalTempat) setTanggalTempat(parsed.tanggalTempat); if (parsed.items && parsed.items.length) setItems(parsed.items); setHistoryOpen(false); } else { alert("Baris ini tidak memiliki data JSON utuh untuk di-restore."); } } catch(e:any){ console.error(e); alert("Gagal memulihkan data: "+(e.message||e.toString())); } }
 
-  // Util terbilang
+  /** ====== UTIL ====== */
   function terbilangID(num:any){ let n = Math.floor(Math.abs(Number(num) || 0)); if (n === 0) return "nol";
     const angka = ["", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan"];
     function tigaDigit(x:number){ let out=""; if (x >= 100){ if (x===100) return "seratus"; if (x<200) return "seratus "+tigaDigit(x-100); const r=Math.floor(x/100); out+=angka[r]+" ratus"; x=x%100; if(x) out+=" "+tigaDigit(x); return out; }
@@ -300,20 +294,13 @@ export default function App() {
     const skala=["", "ribu", "juta", "miliar", "triliun"], parts:string[]=[]; let i=0; while(n>0){ const rem=n%1000; if(rem){ let ch=tigaDigit(rem); if(i===1 && rem===1) ch="seribu"; else if(i>0) ch+=" "+skala[i]; parts.unshift(ch); } n=Math.floor(n/1000); i++; } return parts.join(" "); }
   function capFirst(s:string){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
   function formatJumlah(val:any){ const n=parseInt(val,10); if(!isFinite(n)) return val||""; return String(n)+" ("+capFirst(terbilangID(n))+")"; }
-  const line = useMemo(() => <div className="w-full h-px bg-gray-400 my-2" />, []);
 
-  // ===== Drag TTD =====
+  /** ====== DRAG TTD ====== */
   const [dragging, setDragging] = useState(false);
   const dragRef = React.useRef<{startX:number; startY:number; x0:number; y0:number} | null>(null);
-
   function onSigMouseDown(e: React.MouseEvent<HTMLDivElement>) {
     setDragging(true);
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      x0: header.ttdX || 0,
-      y0: header.ttdY || 0,
-    };
+    dragRef.current = { startX: e.clientX, startY: e.clientY, x0: header.ttdX || 0, y0: header.ttdY || 0 };
   }
   function onSigMouseMove(e: React.MouseEvent<HTMLDivElement>) {
     if (!dragging || !dragRef.current) return;
@@ -321,25 +308,18 @@ export default function App() {
     const dy = e.clientY - dragRef.current.startY;
     setHeader((h:any) => ({...h, ttdX: dragRef.current!.x0 + dx, ttdY: dragRef.current!.y0 + dy}));
   }
-  function onSigMouseUp() {
-    setDragging(false);
-    dragRef.current = null;
-  }
+  function onSigMouseUp() { setDragging(false); dragRef.current = null; }
 
-  // CETAK: clone #po-print agar aman dari visibility parent
+  /** ====== CETAK (clone supaya 1 halaman) ====== */
   const printDoc = () => {
     try {
       markSpUsedLocal(header.nomorSP);
-
       const src = document.getElementById('po-print');
       if (!src) { window.print(); return; }
-
       const clone = src.cloneNode(true) as HTMLElement;
       clone.id = 'print-clone';
       document.body.appendChild(clone);
-
       document.body.classList.add('printing');
-
       setTimeout(() => {
         window.print();
         setTimeout(() => {
@@ -347,9 +327,7 @@ export default function App() {
           try { clone.remove(); } catch {}
         }, 100);
       }, 50);
-    } catch {
-      window.print();
-    }
+    } catch { window.print(); }
   };
 
   function newPO(){
@@ -358,10 +336,14 @@ export default function App() {
     if (spAuto) incrementSp();
   }
 
+  /** ====== UI ====== */
+  const line = useMemo(() => <div className="w-full h-px bg-gray-400 my-2" />, []);
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       {PrintCSS}
-      {/* Toolbar (tidak dicetak) */}
+
+      {/* Toolbar */}
       <div className="no-print sticky top-0 z-10 border-b bg-white/80 backdrop-blur px-4 py-3 flex items-center gap-2">
         <h1 className="text-lg font-semibold">Purchase Order – Builder (Lengkap)</h1>
         <div className="ml-auto flex gap-2">
@@ -377,9 +359,8 @@ export default function App() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 p-4">
-        {/* ===== FORM SIDE ===== */}
+        {/* ===== FORM ===== */}
         <section className="space-y-6">
-          {/* Info fokus */}
           <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded-xl px-3 py-2 flex items-center justify-between">
             <div>
               <div className="text-sm font-medium">Mode fokus pengisian</div>
@@ -388,83 +369,44 @@ export default function App() {
             <button onClick={()=> setShowMeta(v=>!v)} className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50">{showMeta ? 'Sembunyikan' : 'Edit identitas'}</button>
           </div>
 
-          {/* Jenis PO */}
           <Card title="Jenis Purchase Order">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Select label="Jenis PO" value={poType} onChange={setPoType} options={["Reguler","Prekursor","Obat-obat tertentu"]} />
             </div>
           </Card>
 
-          {/* Identitas (opsional) */}
           {showMeta && (
             <Card title="Identitas Fasilitas Kesehatan">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input label="Judul Dokumen" value={header.judul} onChange={(v:string)=> setHeader((h:any)=> Object.assign({},h,{judul:v}))} />
-                <Input label="Nama Faskes" value={header.namaFaskes} onChange={(v:string)=> setHeader((h:any)=> Object.assign({},h,{namaFaskes:v}))} />
-                <Input label="Izin" value={header.izin} onChange={(v:string)=> setHeader((h:any)=> Object.assign({},h,{izin:v}))} />
-                <Input label="Telp" value={header.telp} onChange={(v:string)=> setHeader((h:any)=> Object.assign({},h,{telp:v}))} />
-                <Input label="Alamat" className="md:col-span-2" value={header.alamat} onChange={(v:string)=> setHeader((h:any)=> Object.assign({},h,{alamat:v}))} />
-                <Input label="Logo URL (opsional)" className="md:col-span-2" value={header.logoUrl} onChange={(v:string)=> setHeader((h:any)=> Object.assign({},h,{logoUrl:v}))} placeholder="https://.../logo.png" />
+                <Input label="Judul Dokumen" value={header.judul} onChange={(v:string)=> setHeader((h:any)=> ({...h, judul:v}))} />
+                <Input label="Nama Faskes" value={header.namaFaskes} onChange={(v:string)=> setHeader((h:any)=> ({...h, namaFaskes:v}))} />
+                <Input label="Izin" value={header.izin} onChange={(v:string)=> setHeader((h:any)=> ({...h, izin:v}))} />
+                <Input label="Telp" value={header.telp} onChange={(v:string)=> setHeader((h:any)=> ({...h, telp:v}))} />
+                <Input label="Alamat" className="md:col-span-2" value={header.alamat} onChange={(v:string)=> setHeader((h:any)=> ({...h, alamat:v}))} />
+                <Input label="Logo URL (opsional)" className="md:col-span-2" value={header.logoUrl} onChange={(v:string)=> setHeader((h:any)=> ({...h, logoUrl:v}))} placeholder="https://.../logo.png" />
 
-                {/* TTD controls */}
-                <Input
-                  label="Tanda Tangan URL (opsional)"
-                  className="md:col-span-2"
-                  value={header.ttdUrl}
-                  onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdUrl:v}))}
-                  placeholder="https://.../tanda-tangan.png atau data:image/png;base64,..."
-                />
-                <Input
-                  label="Tinggi maksimal TTD (mm)"
-                  value={String(header.ttdHeightMm ?? 24)}
-                  onChange={(v:string)=>{
-                    const n = Math.max(10, Math.min(60, parseInt(v||'24',10) || 24));
-                    setHeader((h:any)=> ({...h, ttdHeightMm: n}));
-                  }}
-                  type="number"
-                />
-                <Input
-                  label="Tinggi ruang TTD (mm) — jarak Pemesan ↔ Nama"
-                  value={String(header.ttdAreaHeightMm ?? 28)}
-                  onChange={(v:string)=>{
-                    const n = Math.max(10, Math.min(60, parseInt(v||'28',10) || 28));
-                    setHeader((h:any)=> ({...h, ttdAreaHeightMm: n}));
-                  }}
-                  type="number"
-                />
-
+                {/* TTD */}
+                <Input label="Tanda Tangan URL (opsional)" className="md:col-span-2" value={header.ttdUrl} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdUrl:v}))} placeholder="https://.../tanda-tangan.png" />
+                <Input label="Tinggi maksimal TTD (mm)" value={String(header.ttdHeightMm)} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdHeightMm: Math.max(10, Math.min(60, parseInt(v||'22',10) || 22))}))} type="number" />
+                <Input label="Tinggi ruang TTD (mm) — jarak Pemesan ↔ Nama" value={String(header.ttdAreaHeightMm)} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdAreaHeightMm: Math.max(10, Math.min(60, parseInt(v||'18',10) || 18))}))} type="number" />
                 <div className="md:col-span-2 grid grid-cols-3 gap-3">
-                  <Input
-                    label="Posisi X (px)"
-                    value={String(header.ttdX ?? 0)}
-                    onChange={(v:string)=> setHeader((h:any) => ({...h, ttdX: parseInt(v||'0',10) || 0}))}
-                    type="number"
-                  />
-                  <Input
-                    label="Posisi Y (px)"
-                    value={String(header.ttdY ?? 0)}
-                    onChange={(v:string)=> setHeader((h:any) => ({...h, ttdY: parseInt(v||'0',10) || 0}))}
-                    type="number"
-                  />
+                  <Input label="Posisi X (px)" value={String(header.ttdX)} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdX: parseInt(v||'0',10) || 0}))} type="number" />
+                  <Input label="Posisi Y (px)" value={String(header.ttdY)} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdY: parseInt(v||'0',10) || 0}))} type="number" />
                   <label className="block">
                     <span className="text-xs text-gray-600">Scale (%)</span>
                     <input
                       type="range" min={50} max={200} step={1}
                       value={Math.round((header.ttdScale ?? 1)*100)}
-                      onChange={(e)=> {
-                        const s = Math.max(0.5, Math.min(2, Number((e.target as HTMLInputElement).value)/100));
-                        setHeader((h:any) => ({...h, ttdScale: s}));
-                      }}
+                      onChange={(e)=> setHeader((h:any)=> ({...h, ttdScale: Math.max(0.5, Math.min(2, Number((e.target as HTMLInputElement).value)/100))}))}
                       className="mt-1 w-full"
                     />
-                    <div className="text-xs text-gray-600 mt-1">
-                      {Math.round((header.ttdScale ?? 1)*100)}%
-                    </div>
+                    <div className="text-xs text-gray-600 mt-1">{Math.round((header.ttdScale ?? 1)*100)}%</div>
                   </label>
                 </div>
 
+                {/* Nomor SP */}
                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                  <Input label="Nomor SP" value={header.nomorSP} onChange={(v:string)=> setHeader((h:any)=> Object.assign({},h,{nomorSP:v}))} />
+                  <Input label="Nomor SP" value={header.nomorSP} onChange={(v:string)=> setHeader((h:any)=> ({...h, nomorSP:v}))} />
                   <label className="flex items-center gap-2 text-sm">
                     <input type="checkbox" checked={spAuto} onChange={(e)=> setSpAuto((e.target as HTMLInputElement).checked)} />
                     Nomor SP otomatis (per jenis)
@@ -474,6 +416,7 @@ export default function App() {
                     <button onClick={incrementSp} className="px-3 py-2 rounded-xl border text-sm">Naikkan Nomor SP</button>
                   </div>
                 </div>
+
                 <div className="md:col-span-2 text-xs text-gray-700 mt-1">
                   Status lokal: {isSpUsedLocal ? <span className="text-red-600">Duplikat</span> : <span className="text-green-700">Unik</span>}
                   {hasSheets && (<>
@@ -485,29 +428,26 @@ export default function App() {
             </Card>
           )}
 
-          {/* Pemesan (opsional) */}
           {showMeta && (
             <Card title="Pemesan">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input label="Nama" value={pemesan.nama} onChange={(v:string)=> setPemesan(p=> Object.assign({},p,{nama:v}))} />
-                <Input label="Jabatan" value={pemesan.jabatan} onChange={(v:string)=> setPemesan(p=> Object.assign({},p,{jabatan:v}))} />
-                <Input label="Nomor SIPA" className="md:col-span-2" value={pemesan.sipa} onChange={(v:string)=> setPemesan(p=> Object.assign({},p,{sipa:v}))} />
+                <Input label="Nama" value={pemesan.nama} onChange={(v:string)=> setPemesan(p=> ({...p, nama:v}))} />
+                <Input label="Jabatan" value={pemesan.jabatan} onChange={(v:string)=> setPemesan(p=> ({...p, jabatan:v}))} />
+                <Input label="Nomor SIPA" className="md:col-span-2" value={pemesan.sipa} onChange={(v:string)=> setPemesan(p=> ({...p, sipa:v}))} />
               </div>
             </Card>
           )}
 
-          {/* Kebutuhan Faskes (opsional) */}
           {showMeta && (
             <Card title="Kebutuhan Faskes">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input label="Nama Klinik" value={kebutuhan.namaKlinik} onChange={(v:string)=> setKebutuhan(k=> Object.assign({},k,{namaKlinik:v}))} />
-                <Input label="No. Izin" value={kebutuhan.noIzin} onChange={(v:string)=> setKebutuhan(k=> Object.assign({},k,{noIzin:v}))} />
-                <Input label="Alamat" className="md:col-span-2" value={kebutuhan.alamat} onChange={(v:string)=> setKebutuhan(k=> Object.assign({},k,{alamat:v}))} />
+                <Input label="Nama Klinik" value={kebutuhan.namaKlinik} onChange={(v:string)=> setKebutuhan(k=> ({...k, namaKlinik:v}))} />
+                <Input label="No. Izin" value={kebutuhan.noIzin} onChange={(v:string)=> setKebutuhan(k=> ({...k, noIzin:v}))} />
+                <Input label="Alamat" className="md:col-span-2" value={kebutuhan.alamat} onChange={(v:string)=> setKebutuhan(k=> ({...k, alamat:v}))} />
               </div>
             </Card>
           )}
 
-          {/* Daftar Item */}
           <Card title="Mengajukan pesanan obat kepada">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end mb-2">
               <label className="block">
@@ -573,10 +513,10 @@ export default function App() {
           </Card>
         </section>
 
-        {/* ===== PREVIEW SIDE (YANG DICETAK) ===== */}
+        {/* ===== PREVIEW / CETAK ===== */}
         <section>
           <div id="po-print" className="print-page bg-white shadow-sm rounded-2xl p-6">
-            {/* Kop */}
+            {/* KOP */}
             <div className="flex items-start gap-4">
               {header.logoUrl ? (
                 <img src={header.logoUrl} alt="Logo" className="w-16 h-16 rounded-full object-contain border" />
@@ -598,7 +538,7 @@ export default function App() {
               <div><span className="font-medium">Nomor SP : </span><span>{header.nomorSP}</span></div>
             </div>
 
-            {/* Pemesan */}
+            {/* PEMESAN */}
             <div className="mt-4 text-sm space-y-1">
               <p><span className="inline-block w-56">Yang bertanda tangan di bawah ini</span>:</p>
               <div className="grid grid-cols-[auto_1fr] gap-x-2">
@@ -608,7 +548,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Tujuan */}
+            {/* TUJUAN */}
             <div className="mt-4 text-sm space-y-1">
               <p>Mengajukan pesanan obat kepada :</p>
               <div className="grid grid-cols-[auto_1fr] gap-x-2">
@@ -618,7 +558,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Tabel */}
+            {/* TABEL */}
             <div className="mt-4">
               <table className="w-full text-xs border border-black">
                 <thead>
@@ -648,7 +588,7 @@ export default function App() {
               </table>
             </div>
 
-            {/* Kebutuhan */}
+            {/* KEBUTUHAN */}
             <div className="mt-4 text-sm space-y-1">
               <p>Obat tersebut akan digunakan untuk memenuhi kebutuhan :</p>
               <div className="grid grid-cols-[auto_1fr] gap-x-2">
@@ -658,7 +598,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Tanda tangan: overlay (jarak tetap) + drag & scale */}
+            {/* TANDA TANGAN (overlay; jarak tetap & pendek) */}
             <div className="mt-8 text-sm">
               <div className="flex justify-end">
                 <div className="w-80 text-center avoid-break">
@@ -670,7 +610,7 @@ export default function App() {
                       className={`${dragging ? 'select-none' : ''}`}
                       style={{
                         position: 'relative',
-                        height: `${header.ttdAreaHeightMm ?? 28}mm`, // RUANG tetap (spacer): menjaga jarak
+                        height: `${header.ttdAreaHeightMm}mm`, // spacer jarak tetap & pendek
                         overflow: 'visible',
                       }}
                       onMouseMove={onSigMouseMove}
@@ -678,14 +618,13 @@ export default function App() {
                       onMouseLeave={onSigMouseUp}
                       title="Drag untuk memindahkan tanda tangan"
                     >
-                      {/* Layer gambar overlay absolut (tidak memengaruhi tinggi spacer) */}
                       <div
                         onMouseDown={onSigMouseDown}
                         style={{
                           position: 'absolute',
-                          left: `${header.ttdX || 0}px`,
-                          top:  `${header.ttdY || 0}px`,
-                          transform: `translate(-50%, -50%) scale(${header.ttdScale || 1})`,
+                          left: `${header.ttdX}px`,
+                          top:  `${header.ttdY}px`,
+                          transform: `translate(-50%, -50%) scale(${header.ttdScale})`,
                           cursor: 'move',
                         }}
                       >
@@ -693,7 +632,7 @@ export default function App() {
                           src={header.ttdUrl}
                           alt="Tanda tangan"
                           style={{
-                            maxHeight: `${header.ttdHeightMm ?? 24}mm`, // batasi tinggi gambar saja
+                            maxHeight: `${header.ttdHeightMm}mm`, // hanya batas gambar
                             maxWidth: '100%',
                             objectFit: 'contain',
                             display: 'block'
@@ -703,8 +642,7 @@ export default function App() {
                       </div>
                     </div>
                   ) : (
-                    // Jika belum ada gambar, sisakan RUANG tetap agar layout rapi
-                    <div style={{ height: `${header.ttdAreaHeightMm ?? 28}mm` }} />
+                    <div style={{ height: `${header.ttdAreaHeightMm}mm` }} />
                   )}
 
                   <p className="font-semibold">{pemesan.nama}</p>
@@ -713,13 +651,13 @@ export default function App() {
               </div>
             </div>
 
-            {/* Status simpan */}
             {netStatus && <p className="mt-4 text-xs text-gray-600">{netStatus}</p>}
           </div>
         </section>
       </div>
 
-      {/* PANEL KELOLA ZAT AKTIF */}
+      {/* ========== PANELS ========== */}
+      {/* Kelola Zat Aktif */}
       {zOpen && (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/30" onClick={()=> setZOpen(false)} />
@@ -770,7 +708,7 @@ export default function App() {
         </div>
       )}
 
-      {/* PANEL FAVORIT */}
+      {/* Favorit */}
       {favOpen && (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/30" onClick={()=> setFavOpen(false)} />
@@ -801,7 +739,7 @@ export default function App() {
         </div>
       )}
 
-      {/* PANEL TEMPLATE PBF */}
+      {/* Template PBF */}
       {pbfOpen && (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/30" onClick={()=> setPbfOpen(false)} />
@@ -830,7 +768,7 @@ export default function App() {
         </div>
       )}
 
-      {/* PANEL RIWAYAT (Google Sheets) */}
+      {/* Riwayat */}
       {historyOpen && (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/30" onClick={()=> setHistoryOpen(false)} />
