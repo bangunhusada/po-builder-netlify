@@ -102,7 +102,7 @@ export default function App() {
     telp: "Telp : (0274) 488314",
     judul: "SURAT PESANAN",
     nomorSP: "",
-    logoUrl: "" // opsional URL logo
+    logoUrl: "https://iili.io/KBiv0xa.png" // opsional URL logo
   });
 
   const [pemesan, setPemesan] = useState({
