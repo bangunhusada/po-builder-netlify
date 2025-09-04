@@ -53,7 +53,7 @@ function Select({ label, value, onChange, options, className = "" }: any) {
 
 /** ============== APP (DEFAULT EXPORT) ============== */
 export default function App() {
-  // Print CSS A4: hanya panel PO yang tercetak (pakai clone supaya tidak blank)
+  // Print CSS A4: hanya panel PO yang tercetak (pakai clone supaya tidak blank/dua halaman)
   const PrintCSS = (
     <style>{`
       @page { size: A4 portrait; margin: 12mm; }
@@ -97,6 +97,12 @@ export default function App() {
           break-inside: avoid;
           page-break-inside: avoid;
         }
+
+        /* Kelas util print */
+        .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+        .sig-box { display:flex; align-items:center; justify-content:center; overflow:visible!important; }
+        .sig-img { margin:0 auto; }
+        .select-none { user-select: none; }
       }
     `}</style>
   );
@@ -117,7 +123,13 @@ export default function App() {
     judul: "SURAT PESANAN",
     nomorSP: "",
     logoUrl: "https://iili.io/KBiv0xa.png", // opsional URL logo
-    ttdUrl: ""                               // <— URL gambar tanda tangan (opsional)
+
+    // ===== TTD (gambar/scan) =====
+    ttdUrl: "",         // URL PNG tanda tangan (atau dataURL)
+    ttdHeightMm: 24,    // tinggi maksimal tanda tangan (mm)
+    ttdX: 0,            // posisi X (px) relatif kotak TTD
+    ttdY: 0,            // posisi Y (px)
+    ttdScale: 1,        // skala (1 = 100%)
   });
 
   const [pemesan, setPemesan] = useState({
@@ -288,7 +300,31 @@ export default function App() {
   function capFirst(s:string){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
   function formatJumlah(val:any){ const n=parseInt(val,10); if(!isFinite(n)) return val||""; return String(n)+" ("+capFirst(terbilangID(n))+")"; }
   const line = useMemo(() => <div className="w-full h-px bg-gray-400 my-2" />, []);
-  
+
+  // ===== Drag TTD =====
+  const [dragging, setDragging] = useState(false);
+  const dragRef = React.useRef<{startX:number; startY:number; x0:number; y0:number} | null>(null);
+
+  function onSigMouseDown(e: React.MouseEvent<HTMLDivElement>) {
+    setDragging(true);
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      x0: header.ttdX || 0,
+      y0: header.ttdY || 0,
+    };
+  }
+  function onSigMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (!dragging || !dragRef.current) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    setHeader(h => ({...h, ttdX: dragRef.current!.x0 + dx, ttdY: dragRef.current!.y0 + dy}));
+  }
+  function onSigMouseUp() {
+    setDragging(false);
+    dragRef.current = null;
+  }
+
   // CETAK: clone #po-print agar aman dari visibility parent
   const printDoc = () => {
     try {
@@ -326,7 +362,7 @@ export default function App() {
       {PrintCSS}
       {/* Toolbar (tidak dicetak) */}
       <div className="no-print sticky top-0 z-10 border-b bg-white/80 backdrop-blur px-4 py-3 flex items-center gap-2">
-        <h1 className="text-lg font-semibold">Purchase Order – Bangun Husada</h1>
+        <h1 className="text-lg font-semibold">Purchase Order – Builder (Lengkap)</h1>
         <div className="ml-auto flex gap-2">
           <button onClick={newPO} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">PO Baru</button>
           <button onClick={addRow} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Tambah Baris</button>
@@ -368,15 +404,53 @@ export default function App() {
                 <Input label="Telp" value={header.telp} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{telp:v}))} />
                 <Input label="Alamat" className="md:col-span-2" value={header.alamat} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{alamat:v}))} />
                 <Input label="Logo URL (opsional)" className="md:col-span-2" value={header.logoUrl} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{logoUrl:v}))} placeholder="https://.../logo.png" />
-                
-                {/* Tanda tangan URL */}
+
+                {/* TTD controls */}
                 <Input
                   label="Tanda Tangan URL (opsional)"
                   className="md:col-span-2"
                   value={header.ttdUrl}
-                  onChange={(v:string)=> setHeader(h=> Object.assign({}, h, { ttdUrl: v })) }
-                  placeholder="https://.../tanda-tangan.png"
+                  onChange={(v:string)=> setHeader(h=> ({...h, ttdUrl:v}))}
+                  placeholder="https://.../tanda-tangan.png atau data:image/png;base64,..."
                 />
+                <Input
+                  label="Tinggi maksimal TTD (mm)"
+                  value={String(header.ttdHeightMm ?? 24)}
+                  onChange={(v:string)=>{
+                    const n = Math.max(10, Math.min(60, parseInt(v||'24',10) || 24));
+                    setHeader(h=> ({...h, ttdHeightMm: n}));
+                  }}
+                  type="number"
+                />
+                <div className="md:col-span-2 grid grid-cols-3 gap-3">
+                  <Input
+                    label="Posisi X (px)"
+                    value={String(header.ttdX ?? 0)}
+                    onChange={(v:string)=> setHeader(h => ({...h, ttdX: parseInt(v||'0',10) || 0}))}
+                    type="number"
+                  />
+                  <Input
+                    label="Posisi Y (px)"
+                    value={String(header.ttdY ?? 0)}
+                    onChange={(v:string)=> setHeader(h => ({...h, ttdY: parseInt(v||'0',10) || 0}))}
+                    type="number"
+                  />
+                  <label className="block">
+                    <span className="text-xs text-gray-600">Scale (%)</span>
+                    <input
+                      type="range" min={50} max={200} step={1}
+                      value={Math.round((header.ttdScale ?? 1)*100)}
+                      onChange={(e)=> {
+                        const s = Math.max(0.5, Math.min(2, Number((e.target as HTMLInputElement).value)/100));
+                        setHeader(h => ({...h, ttdScale: s}));
+                      }}
+                      className="mt-1 w-full"
+                    />
+                    <div className="text-xs text-gray-600 mt-1">
+                      {Math.round((header.ttdScale ?? 1)*100)}%
+                    </div>
+                  </label>
+                </div>
 
                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
                   <Input label="Nomor SP" value={header.nomorSP} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{nomorSP:v}))} />
@@ -573,18 +647,52 @@ export default function App() {
               </div>
             </div>
 
-            {/* Tanda tangan */}
+            {/* Tanda tangan: drag & scale */}
             <div className="mt-8 text-sm">
               <div className="flex justify-end">
-                <div className="w-80 text-center">
+                <div className="w-80 text-center avoid-break">
                   <p>{tanggalTempat.tempat}, {tanggalTempat.tanggal}</p>
                   <p>Pemesan</p>
 
-                  {/* Jika ada URL tanda tangan, tampilkan gambar; jika tidak, sediakan ruang untuk basah */}
-                  {header.ttdUrl
-                    ? <img src={header.ttdUrl} alt="Tanda tangan" className="h-16 object-contain mx-auto" />
-                    : <div className="h-16" />
-                  }
+                  {header.ttdUrl ? (
+                    <div
+                      className={`sig-box my-2 ${dragging ? 'select-none' : ''}`}
+                      style={{ minHeight: `${(header.ttdHeightMm ?? 24) + 4}mm`, position: 'relative' }}
+                      onMouseMove={onSigMouseMove}
+                      onMouseUp={onSigMouseUp}
+                      onMouseLeave={onSigMouseUp}
+                    >
+                      <div
+                        onMouseDown={onSigMouseDown}
+                        style={{
+                          position: 'absolute',
+                          left: `${header.ttdX || 0}px`,
+                          top:  `${header.ttdY || 0}px`,
+                          transform: `translate(-50%, -50%) scale(${header.ttdScale || 1})`,
+                          cursor: 'move',
+                        }}
+                        title="Drag untuk memindahkan tanda tangan"
+                      >
+                        <img
+                          src={header.ttdUrl}
+                          alt="Tanda tangan"
+                          className="sig-img"
+                          style={{
+                            maxHeight: `${header.ttdHeightMm ?? 24}mm`,
+                            maxWidth: '100%',
+                            objectFit: 'contain',
+                            display: 'block'
+                          }}
+                          draggable={false}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className="sig-box my-2"
+                      style={{ minHeight: `${(header.ttdHeightMm ?? 24) + 4}mm` }}
+                    />
+                  )}
 
                   <p className="font-semibold">{pemesan.nama}</p>
                   <p className="text-xs">SIPA : {pemesan.sipa}</p>
