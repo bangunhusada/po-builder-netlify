@@ -53,43 +53,50 @@ function Select({ label, value, onChange, options, className = "" }: any) {
 
 /** ============== APP (DEFAULT EXPORT) ============== */
 export default function App() {
-  // Print CSS A4: hanya panel #po-print yang tercetak
+  // Print CSS A4: hanya panel PO yang tercetak (pakai clone supaya tidak blank)
   const PrintCSS = (
     <style>{`
       @page { size: A4 portrait; margin: 12mm; }
 
-      /* Kelas non-print yang juga dipakai saat preview */
-      .avoid-break { break-inside: avoid; page-break-inside: avoid; }
-      .sig-box { display:flex; align-items:center; justify-content:center; overflow:visible!important; }
-      .sig-img { display:block; margin:0 auto; }
-      .select-none { user-select: none; }
-
       @media print {
-        /* Sembunyikan SEMUA elemen saat print */
-        body * { visibility: hidden !important; }
+        html, body {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+          background: #fff !important;
+        }
 
-        /* Tampilkan hanya area surat pesanan */
-        #po-print, #po-print * {
+        /* Saat mode .printing aktif, sembunyikan semua kecuali #print-clone */
+        .printing * { display: none !important; }
+
+        .printing #print-clone,
+        .printing #print-clone * {
+          display: initial !important;
           visibility: visible !important;
         }
 
-        /* Pastikan posisi & ukuran pas */
-        #po-print {
-          position: absolute !important;
-          left: 0 !important;
-          top: 0 !important;
-          width: 100% !important;
+        /* Tata letak clone agar satu halaman A4 */
+        #print-clone {
+          position: fixed !important;
+          inset: 0 !important;           /* top/right/bottom/left: 0 */
+          margin: auto !important;
+          width: 186mm !important;       /* aman utk margin 12mm kiri–kanan */
+          background: #fff !important;
           box-shadow: none !important;
+          border-radius: 0 !important;
           padding: 0 !important;
         }
 
-        /* Hindari patah halaman */
-        #po-print, table, thead, tbody, tr, th, td, img {
+        /* Hindari pecah tabel/elemen */
+        #print-clone table,
+        #print-clone thead,
+        #print-clone tbody,
+        #print-clone tr,
+        #print-clone th,
+        #print-clone td,
+        #print-clone img {
           break-inside: avoid;
           page-break-inside: avoid;
         }
-
-        html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background:#fff !important; }
       }
     `}</style>
   );
@@ -110,13 +117,7 @@ export default function App() {
     judul: "SURAT PESANAN",
     nomorSP: "",
     logoUrl: "https://iili.io/KBiv0xa.png", // opsional URL logo
-
-    // ===== TTD (gambar) + kontrol ukuran/posisi =====
-    ttdUrl: "",        // URL PNG tanda tangan
-    ttdHeightMm: 24,   // tinggi maksimal TTD saat render/print (mm)
-    ttdX: 0,           // posisi X (px) relatif kotak TTD (tengah gambar sebagai acuan)
-    ttdY: 0,           // posisi Y (px)
-    ttdScale: 1        // skala (1 = 100%)
+    ttdUrl: ""                               // <— URL gambar tanda tangan (opsional)
   });
 
   const [pemesan, setPemesan] = useState({
@@ -272,4 +273,484 @@ export default function App() {
   const [historyRows, setHistoryRows] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
-  function assemblePayload(){ return { poType, header, pemesan, pbf, kebutuhan, tanggalTempat, items, savedAt
+  function assemblePayload(){ return { poType, header, pemesan, pbf, kebutuhan, tanggalTempat, items, savedAt: new Date().toISOString() }; }
+  async function saveToGoogleSheets(){ try { setNetStatus("Menyimpan..."); const res = await fetch("/.netlify/functions/sheets-append", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ payload: assemblePayload() }) }); const data = await res.json(); if (data && data.error) throw new Error(data.error.message||"Gagal menyimpan"); setNetStatus("Tersimpan ke Google Sheets ✔"); setTimeout(()=> setNetStatus(""), 2500); } catch(e:any){ console.error(e); setNetStatus("Gagal menyimpan: "+ (e.message||e.toString())); } }
+  async function loadHistory(){ try { setHistoryLoading(true); setHistoryError(""); const res = await fetch("/.netlify/functions/sheets-history"); const data = await res.json(); if (data && data.error) throw new Error(data.error.message||"Gagal memuat"); const rows = (data.rows || []) as any[]; setHistoryRows(rows); } catch(e:any){ console.error(e); setHistoryError(e.message||String(e)); } finally { setHistoryLoading(false); } }
+  function restoreFromRow(row:any){ try { if (row && row.json) { const parsed = JSON.parse(row.json); if (parsed.poType) setPoType(parsed.poType); if (parsed.header) setHeader(parsed.header); if (parsed.pemesan) setPemesan(parsed.pemesan); if (parsed.pbf) setPbf(parsed.pbf); if (parsed.kebutuhan) setKebutuhan(parsed.kebutuhan); if (parsed.tanggalTempat) setTanggalTempat(parsed.tanggalTempat); if (parsed.items && parsed.items.length) setItems(parsed.items); setHistoryOpen(false); } else { alert("Baris ini tidak memiliki data JSON utuh untuk di-restore."); } } catch(e:any){ console.error(e); alert("Gagal memulihkan data: "+(e.message||e.toString())); } }
+
+  // Util terbilang
+  function terbilangID(num:any){ let n = Math.floor(Math.abs(Number(num) || 0)); if (n === 0) return "nol";
+    const angka = ["", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan"];
+    function tigaDigit(x:number){ let out=""; if (x >= 100){ if (x===100) return "seratus"; if (x<200) return "seratus "+tigaDigit(x-100); const r=Math.floor(x/100); out+=angka[r]+" ratus"; x=x%100; if(x) out+=" "+tigaDigit(x); return out; }
+      if (x >= 20){ const p=Math.floor(x/10); out+=angka[p]+" puluh"; const s=x%10; if(s) out+=" "+angka[s]; return out; }
+      if (x >= 12) return angka[x-10]+" belas"; if (x===11) return "sebelas"; if (x===10) return "sepuluh"; return angka[x]; }
+    const skala=["", "ribu", "juta", "miliar", "triliun"], parts:string[]=[]; let i=0; while(n>0){ const rem=n%1000; if(rem){ let ch=tigaDigit(rem); if(i===1 && rem===1) ch="seribu"; else if(i>0) ch+=" "+skala[i]; parts.unshift(ch); } n=Math.floor(n/1000); i++; } return parts.join(" "); }
+  function capFirst(s:string){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
+  function formatJumlah(val:any){ const n=parseInt(val,10); if(!isFinite(n)) return val||""; return String(n)+" ("+capFirst(terbilangID(n))+")"; }
+  const line = useMemo(() => <div className="w-full h-px bg-gray-400 my-2" />, []);
+  
+  // CETAK: clone #po-print agar aman dari visibility parent
+  const printDoc = () => {
+    try {
+      markSpUsedLocal(header.nomorSP);
+
+      const src = document.getElementById('po-print');
+      if (!src) { window.print(); return; }
+
+      const clone = src.cloneNode(true) as HTMLElement;
+      clone.id = 'print-clone';
+      document.body.appendChild(clone);
+
+      document.body.classList.add('printing');
+
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+          document.body.classList.remove('printing');
+          try { clone.remove(); } catch {}
+        }, 100);
+      }, 50);
+    } catch {
+      window.print();
+    }
+  };
+
+  function newPO(){
+    setPbf({ nama: "", alamat: "", telp: "" });
+    setItems([{ nama: "", zatAktif: "", bentukKekuatan: "", satuan: "", jumlah: "", ket: "" }]);
+    if (spAuto) incrementSp();
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      {PrintCSS}
+      {/* Toolbar (tidak dicetak) */}
+      <div className="no-print sticky top-0 z-10 border-b bg-white/80 backdrop-blur px-4 py-3 flex items-center gap-2">
+        <h1 className="text-lg font-semibold">Purchase Order – Bangun Husada</h1>
+        <div className="ml-auto flex gap-2">
+          <button onClick={newPO} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">PO Baru</button>
+          <button onClick={addRow} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Tambah Baris</button>
+          <button onClick={()=> setZOpen(true)} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Kelola Zat Aktif</button>
+          <button onClick={()=> { setHistoryOpen(true); loadHistory(); }} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Riwayat</button>
+          {hasSheets && (
+            <button onClick={saveToGoogleSheets} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Simpan ke Google Sheets</button>
+          )}
+          <button onClick={printDoc} className="px-3 py-2 rounded-xl shadow text-sm bg-black text-white hover:opacity-90">Cetak / Simpan PDF</button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 p-4">
+        {/* ===== FORM SIDE ===== */}
+        <section className="space-y-6">
+          {/* Info fokus */}
+          <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded-xl px-3 py-2 flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium">Mode fokus pengisian</div>
+              <div className="text-xs">Bagian Identitas, Pemesan, dan Kebutuhan Faskes disembunyikan agar fokus ke Tujuan PBF & Daftar Item.</div>
+            </div>
+            <button onClick={()=> setShowMeta(v=>!v)} className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50">{showMeta ? 'Sembunyikan' : 'Edit identitas'}</button>
+          </div>
+
+          {/* Jenis PO */}
+          <Card title="Jenis Purchase Order">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Select label="Jenis PO" value={poType} onChange={setPoType} options={["Reguler","Prekursor","Obat-obat tertentu"]} />
+            </div>
+          </Card>
+
+          {/* Identitas (opsional) */}
+          {showMeta && (
+            <Card title="Identitas Fasilitas Kesehatan">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Input label="Judul Dokumen" value={header.judul} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{judul:v}))} />
+                <Input label="Nama Faskes" value={header.namaFaskes} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{namaFaskes:v}))} />
+                <Input label="Izin" value={header.izin} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{izin:v}))} />
+                <Input label="Telp" value={header.telp} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{telp:v}))} />
+                <Input label="Alamat" className="md:col-span-2" value={header.alamat} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{alamat:v}))} />
+                <Input label="Logo URL (opsional)" className="md:col-span-2" value={header.logoUrl} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{logoUrl:v}))} placeholder="https://.../logo.png" />
+                
+                {/* Tanda tangan URL */}
+                <Input
+                  label="Tanda Tangan URL (opsional)"
+                  className="md:col-span-2"
+                  value={header.ttdUrl}
+                  onChange={(v:string)=> setHeader(h=> Object.assign({}, h, { ttdUrl: v })) }
+                  placeholder="https://.../tanda-tangan.png"
+                />
+
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                  <Input label="Nomor SP" value={header.nomorSP} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{nomorSP:v}))} />
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={spAuto} onChange={(e)=> setSpAuto((e.target as HTMLInputElement).checked)} />
+                    Nomor SP otomatis (per jenis)
+                  </label>
+                  <div className="flex gap-2">
+                    <button onClick={decrementSp} className="px-3 py-2 rounded-xl border text-sm">Turunkan Nomor SP</button>
+                    <button onClick={incrementSp} className="px-3 py-2 rounded-xl border text-sm">Naikkan Nomor SP</button>
+                  </div>
+                </div>
+                <div className="md:col-span-2 text-xs text-gray-700 mt-1">
+                  Status lokal: {isSpUsedLocal ? <span className="text-red-600">Duplikat</span> : <span className="text-green-700">Unik</span>}
+                  {hasSheets && (<>
+                    {' · '}<button onClick={()=> checkSpUniqueRemote(header.nomorSP)} className="underline">Cek unik ke Sheets</button>
+                    {spRemoteStatus && <> — {spRemoteStatus}</>}
+                  </>)}
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Pemesan (opsional) */}
+          {showMeta && (
+            <Card title="Pemesan">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Input label="Nama" value={pemesan.nama} onChange={(v:string)=> setPemesan(p=> Object.assign({},p,{nama:v}))} />
+                <Input label="Jabatan" value={pemesan.jabatan} onChange={(v:string)=> setPemesan(p=> Object.assign({},p,{jabatan:v}))} />
+                <Input label="Nomor SIPA" className="md:col-span-2" value={pemesan.sipa} onChange={(v:string)=> setPemesan(p=> Object.assign({},p,{sipa:v}))} />
+              </div>
+            </Card>
+          )}
+
+          {/* Kebutuhan Faskes (opsional) */}
+          {showMeta && (
+            <Card title="Kebutuhan Faskes">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Input label="Nama Klinik" value={kebutuhan.namaKlinik} onChange={(v:string)=> setKebutuhan(k=> Object.assign({},k,{namaKlinik:v}))} />
+                <Input label="No. Izin" value={kebutuhan.noIzin} onChange={(v:string)=> setKebutuhan(k=> Object.assign({},k,{noIzin:v}))} />
+                <Input label="Alamat" className="md:col-span-2" value={kebutuhan.alamat} onChange={(v:string)=> setKebutuhan(k=> Object.assign({},k,{alamat:v}))} />
+              </div>
+            </Card>
+          )}
+
+          {/* Daftar Item */}
+          <Card title="Mengajukan pesanan obat kepada">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end mb-2">
+              <label className="block">
+                <span className="text-xs text-gray-600">Template PBF</span>
+                <select onChange={(e)=> { const i = parseInt((e.target as HTMLSelectElement).value,10); if(!isNaN(i) && i>=0) applyPbfTemplate(i); (e.target as HTMLSelectElement).value='-1'; }} defaultValue="-1" className="mt-1 w-full rounded-xl border px-3 py-2 text-sm bg-white">
+                  <option value="-1">-- Pilih Template --</option>
+                  {pbfTemplates.map((t:any,i:number)=> (<option key={i} value={i}>{t.nama||('Template '+(i+1))}</option>))}
+                </select>
+              </label>
+              <button onClick={saveCurrentPbfAsTemplate} className="px-3 py-2 rounded-xl border text-sm">Simpan sebagai Template</button>
+              <button onClick={()=> setPbfOpen(true)} className="px-3 py-2 rounded-xl border text-sm">Kelola Template</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Input label="Nama PBF" value={pbf.nama} onChange={(v:string)=> setPbf({...pbf, nama:v})} />
+              <Input label="Telepon" value={pbf.telp} onChange={(v:string)=> setPbf({...pbf, telp:v})} />
+              <Input label="Alamat" className="md:col-span-2" value={pbf.alamat} onChange={(v:string)=> setPbf({...pbf, alamat:v})} />
+            </div>
+          </Card>
+
+          <Card title="Daftar Item">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs text-gray-600">Kelola item</div>
+              <div className="flex gap-2">
+                <button onClick={()=> setFavOpen(true)} className="text-xs px-2 py-1 border rounded-lg">Tambah dari Favorit</button>
+                <button onClick={addRow} className="text-xs px-2 py-1 border rounded-lg">Tambah Baris</button>
+              </div>
+            </div>
+            <div className="space-y-4">
+              {items.map((it, idx) => (
+                <div key={idx} className="grid grid-cols-12 gap-2 items-end">
+                  <div className="col-span-12 md:col-span-4">
+                    <Input label={`Nama Obat #${idx+1}`} placeholder="Nama Obat" value={it.nama} onChange={(v:string)=> handleItemChange(idx, 'nama', v)} />
+                  </div>
+                  {showZatAktif && (
+                    <div className="col-span-6 md:col-span-2">
+                      <Select label="Zat Aktif" value={it.zatAktif || ''} onChange={(v:string)=> handleItemChange(idx, 'zatAktif', v)} options={zatOptions} />
+                    </div>
+                  )}
+                  <div className="col-span-6 md:col-span-3">
+                    <Input label="Bentuk & Kekuatan" value={it.bentukKekuatan} onChange={(v:string)=> handleItemChange(idx, 'bentukKekuatan', v)} />
+                  </div>
+                  <div className="col-span-4 md:col-span-1">
+                    <Input label="Satuan" value={it.satuan} onChange={(v:string)=> handleItemChange(idx, 'satuan', v)} />
+                  </div>
+                  <div className="col-span-4 md:col-span-1">
+                    <Input label="Jumlah" placeholder="Jumlah" value={String(it.jumlah || '')} onChange={(v:string)=> handleItemChange(idx, 'jumlah', v)} />
+                  </div>
+                  <div className="col-span-4 md:col-span-1">
+                    <Input label="Ket" value={it.ket} onChange={(v:string)=> handleItemChange(idx, 'ket', v)} />
+                  </div>
+                  <div className="col-span-12 flex justify-between gap-2">
+                    <button onClick={()=> saveFavFromRow(idx)} className="text-xs px-2 py-1 border rounded-lg">Simpan ke Favorit</button>
+                    <div className="flex gap-2">
+                      <button onClick={addRow} className="text-xs px-2 py-1 border rounded-lg">Tambah</button>
+                      {items.length > 1 && (
+                        <button onClick={()=> delRow(idx)} className="text-xs px-2 py-1 border rounded-lg">Hapus</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </section>
+
+        {/* ===== PREVIEW SIDE (YANG DICETAK) ===== */}
+        <section>
+          <div id="po-print" className="print-page bg-white shadow-sm rounded-2xl p-6">
+            {/* Kop */}
+            <div className="flex items-start gap-4">
+              {header.logoUrl ? (
+                <img src={header.logoUrl} alt="Logo" className="w-16 h-16 rounded-full object-contain border" />
+              ) : (
+                <div className="shrink-0 w-16 h-16 rounded-full border grid place-items-center text-xs text-gray-500">LOGO</div>
+              )}
+              <div className="grow">
+                <h2 className="font-semibold text-xl tracking-wide">{header.namaFaskes}</h2>
+                <p className="text-sm leading-snug">{header.izin}<br/>{header.alamat}<br/>{header.telp}</p>
+              </div>
+              <div className="ml-auto text-right">
+                <div className="text-2xl font-extrabold leading-tight">{header.judul || 'SURAT PESANAN'}</div>
+                <div className="text-xl font-bold tracking-wide">{typeUpper(poType)}</div>
+              </div>
+            </div>
+            {line}
+
+            <div className="text-center text-sm">
+              <div><span className="font-medium">Nomor SP : </span><span>{header.nomorSP}</span></div>
+            </div>
+
+            {/* Pemesan */}
+            <div className="mt-4 text-sm space-y-1">
+              <p><span className="inline-block w-56">Yang bertanda tangan di bawah ini</span>:</p>
+              <div className="grid grid-cols-[auto_1fr] gap-x-2">
+                <span>Nama</span><span>: {pemesan.nama}</span>
+                <span>Jabatan</span><span>: {pemesan.jabatan}</span>
+                <span>Nomor SIPA</span><span>: {pemesan.sipa}</span>
+              </div>
+            </div>
+
+            {/* Tujuan */}
+            <div className="mt-4 text-sm space-y-1">
+              <p>Mengajukan pesanan obat kepada :</p>
+              <div className="grid grid-cols-[auto_1fr] gap-x-2">
+                <span>Nama PBF</span><span>: {pbf.nama}</span>
+                <span>Alamat</span><span>: {pbf.alamat}</span>
+                <span>Telp.</span><span>: {pbf.telp || '-'}</span>
+              </div>
+            </div>
+
+            {/* Tabel */}
+            <div className="mt-4">
+              <table className="w-full text-xs border border-black">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="p-2 border border-black w-10">No</th>
+                    <th className="p-2 border border-black">Nama Obat</th>
+                    {showZatAktif && <th className="p-2 border border-black">Zat Aktif</th>}
+                    <th className="p-2 border border-black">Bentuk dan Kekuatan</th>
+                    <th className="p-2 border border-black">Satuan</th>
+                    <th className="p-2 border border-black">Jumlah</th>
+                    <th className="p-2 border border-black">Ket</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((it, i) => (
+                    <tr key={i}>
+                      <td className="p-2 border border-black text-center">{i + 1}</td>
+                      <td className="p-2 border border-black text-left">{it.nama || ''}</td>
+                      {showZatAktif && <td className="p-2 border border-black text-left">{it.zatAktif || ''}</td>}
+                      <td className="p-2 border border-black text-left">{it.bentukKekuatan || ''}</td>
+                      <td className="p-2 border border-black text-center">{it.satuan || ''}</td>
+                      <td className="p-2 border border-black text-center">{formatJumlah(it.jumlah)}</td>
+                      <td className="p-2 border border-black text-left">{it.ket || ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Kebutuhan */}
+            <div className="mt-4 text-sm space-y-1">
+              <p>Obat tersebut akan digunakan untuk memenuhi kebutuhan :</p>
+              <div className="grid grid-cols-[auto_1fr] gap-x-2">
+                <span>Nama Klinik</span><span>: {kebutuhan.namaKlinik}</span>
+                <span>Alamat</span><span>: {kebutuhan.alamat}</span>
+                <span>No. Izin</span><span>: {kebutuhan.noIzin}</span>
+              </div>
+            </div>
+
+            {/* Tanda tangan */}
+            <div className="mt-8 text-sm">
+              <div className="flex justify-end">
+                <div className="w-80 text-center">
+                  <p>{tanggalTempat.tempat}, {tanggalTempat.tanggal}</p>
+                  <p>Pemesan</p>
+
+                  {/* Jika ada URL tanda tangan, tampilkan gambar; jika tidak, sediakan ruang untuk basah */}
+                  {header.ttdUrl
+                    ? <img src={header.ttdUrl} alt="Tanda tangan" className="h-16 object-contain mx-auto" />
+                    : <div className="h-16" />
+                  }
+
+                  <p className="font-semibold">{pemesan.nama}</p>
+                  <p className="text-xs">SIPA : {pemesan.sipa}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Status simpan */}
+            {netStatus && <p className="mt-4 text-xs text-gray-600">{netStatus}</p>}
+          </div>
+        </section>
+      </div>
+
+      {/* PANEL KELOLA ZAT AKTIF */}
+      {zOpen && (
+        <div className="fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/30" onClick={()=> setZOpen(false)} />
+          <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-4 overflow-y-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-lg font-semibold">Kelola Zat Aktif</h3>
+              <div className="ml-auto flex gap-2">
+                <button onClick={resetZat} className="px-3 py-2 border rounded-lg text-sm">Reset ke Default</button>
+                <button onClick={()=> setZOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-medium mb-2">Prekursor (Tambah/Ubah)</h4>
+                <div className="flex gap-2 mb-3">
+                  <input value={preNew} onChange={(e)=> setPreNew((e.target as HTMLInputElement).value)} placeholder="Tambah zat aktif prekursor..." className="flex-1 rounded-xl border px-3 py-2 text-sm" />
+                  <button onClick={addPre} className="px-3 py-2 border rounded-lg text-sm">Tambah</button>
+                </div>
+                <div className="space-y-2">
+                  {preList.length === 0 && <div className="text-xs text-gray-500">Belum ada item.</div>}
+                  {preList.map((v,i)=> (
+                    <div key={i} className="flex items-center gap-2">
+                      <input value={v} onChange={(e)=> renamePre(i, (e.target as HTMLInputElement).value)} className="flex-1 rounded-xl border px-3 py-2 text-sm" />
+                      <button onClick={()=> delPre(i)} className="px-2 py-2 border rounded-lg text-xs">Hapus</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">Obat-obat Tertentu (Tambah/Ubah)</h4>
+                <div className="flex gap-2 mb-3">
+                  <input value={ootNew} onChange={(e)=> setOotNew((e.target as HTMLInputElement).value)} placeholder="Tambah zat aktif OOT..." className="flex-1 rounded-xl border px-3 py-2 text-sm" />
+                  <button onClick={addOOT} className="px-3 py-2 border rounded-lg text-sm">Tambah</button>
+                </div>
+                <div className="space-y-2">
+                  {ootList.length === 0 && <div className="text-xs text-gray-500">Belum ada item.</div>}
+                  {ootList.map((v,i)=> (
+                    <div key={i} className="flex items-center gap-2">
+                      <input value={v} onChange={(e)=> renameOOT(i, (e.target as HTMLInputElement).value)} className="flex-1 rounded-xl border px-3 py-2 text-sm" />
+                      <button onClick={()=> delOOT(i)} className="px-2 py-2 border rounded-lg text-xs">Hapus</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <p className="mt-6 text-xs text-gray-500">Perubahan tersimpan otomatis di perangkat ini (localStorage).</p>
+          </div>
+        </div>
+      )}
+
+      {/* PANEL FAVORIT */}
+      {favOpen && (
+        <div className="fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/30" onClick={()=> setFavOpen(false)} />
+          <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-4 overflow-y-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-lg font-semibold">Favorit Item</h3>
+              <div className="ml-auto flex gap-2">
+                <button onClick={()=> setFavOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
+              </div>
+            </div>
+            {favorites.length===0 ? (
+              <p className="text-sm text-gray-600">Belum ada favorit. Gunakan tombol <b>Simpan ke Favorit</b> pada baris item.</p>
+            ) : (
+              <div className="space-y-2">
+                {favorites.map((f,i)=> (
+                  <div key={i} className="border rounded-xl p-3 text-sm flex items-center gap-2">
+                    <div className="flex-1">
+                      <div className="font-medium">{f.nama}</div>
+                      <div className="text-xs text-gray-600">{f.zatAktif ? ('Zat aktif: '+f.zatAktif+' · ') : ''}{f.bentukKekuatan} · {f.satuan} · Jml: {String(f.jumlah||'')}</div>
+                    </div>
+                    <button onClick={()=> addFromFavorite(i)} className="px-2 py-1 border rounded-lg text-xs">Tambah ke Item</button>
+                    <button onClick={()=> deleteFavorite(i)} className="px-2 py-1 border rounded-lg text-xs">Hapus</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* PANEL TEMPLATE PBF */}
+      {pbfOpen && (
+        <div className="fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/30" onClick={()=> setPbfOpen(false)} />
+          <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-4 overflow-y-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-lg font-semibold">Kelola Template PBF</h3>
+              <div className="ml-auto flex gap-2">
+                <button onClick={()=> setPbfOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
+              </div>
+            </div>
+            {pbfTemplates.length===0 && <p className="text-sm text-gray-600">Belum ada template. Isi data PBF lalu klik <b>Simpan sebagai Template</b>.</p>}
+            <div className="space-y-3">
+              {pbfTemplates.map((t,i)=> (
+                <div key={i} className="border rounded-xl p-3 text-sm grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+                  <Input label="Nama" value={t.nama} onChange={(v:string)=> renamePbfTemplate(i,'nama',v)} />
+                  <Input label="Telepon" value={t.telp} onChange={(v:string)=> renamePbfTemplate(i,'telp',v)} />
+                  <Input label="Alamat" className="md:col-span-3" value={t.alamat} onChange={(v:string)=> renamePbfTemplate(i,'alamat',v)} />
+                  <div className="md:col-span-3 flex justify-end gap-2">
+                    <button onClick={()=> applyPbfTemplate(i)} className="px-2 py-1 border rounded-lg text-xs">Gunakan</button>
+                    <button onClick={()=> deletePbfTemplate(i)} className="px-2 py-1 border rounded-lg text-xs">Hapus</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PANEL RIWAYAT (Google Sheets) */}
+      {historyOpen && (
+        <div className="fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/30" onClick={()=> setHistoryOpen(false)} />
+          <div className="absolute right-0 top-0 h-full w-full max-w-3xl bg-white shadow-xl p-4 overflow-y-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-lg font-semibold">Riwayat (Google Sheets)</h3>
+              <div className="ml-auto flex gap-2">
+                <button onClick={()=> setHistoryOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
+              </div>
+            </div>
+            {historyLoading && <p className="text-sm">Memuat...</p>}
+            {historyError && <p className="text-sm text-red-600">Error: {historyError}</p>}
+            {!historyLoading && !historyError && (
+              <table className="w-full text-sm border">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="p-2 border">Tanggal</th>
+                    <th className="p-2 border">Nomor SP</th>
+                    <th className="p-2 border">Jenis</th>
+                    <th className="p-2 border">Ringkasan</th>
+                    <th className="p-2 border">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historyRows.map((r:any) => (
+                    <tr key={r.idx}>
+                      <td className="p-2 border">{r.tanggal}</td>
+                      <td className="p-2 border">{r.nomorSP}</td>
+                      <td className="p-2 border">{r.jenis}</td>
+                      <td className="p-2 border">{r.ringkasan}</td>
+                      <td className="p-2 border">
+                        <button onClick={()=> restoreFromRow(r)} className="px-2 py-1 border rounded-lg text-xs">Pulihkan</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
