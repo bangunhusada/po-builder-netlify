@@ -55,13 +55,13 @@ function Select({ label, value, onChange, options, className = "" }: any) {
 export default function App() {
   // Print CSS A4: hanya panel #po-print yang tercetak & muat 1 halaman
  
- const PrintCSS = (
+const PrintCSS = (
   <style>{`
-    /* Kunci ukuran halaman ke A4 TANPA margin browser */
+    /* Kunci A4, tanpa margin browser */
     @page { size: A4 portrait; margin: 0; }
 
     @media print {
-      /* Putihkan latar & hilangkan semua elemen selain surat */
+      /* Putihkan latar & rapikan */
       html, body {
         background: #fff !important;
         margin: 0 !important;
@@ -71,38 +71,33 @@ export default function App() {
       }
       .bg-gray-50 { background: #fff !important; }
 
-      /* Sembunyikan seluruh siblings agar tidak menambah tinggi layout */
-      body > :not(#po-print):not(style):not(script) {
+      /* --- INI KUNCI: sembunyikan SEMUA elemen yang bukan #po-print atau keturunannya --- */
+      body *:not(#po-print):not(#po-print *) {
         display: none !important;
       }
 
-      /* === Area yang dicetak ===
-         - Ukuran FIX A4 (210x297mm)
-         - Padding internal sebagai margin dokumen (12mm)
-         - DISKALA 0.96 agar pasti muat 1 halaman
-      */
+      /* Area yang dicetak */
       #po-print {
         position: relative !important;
         width: 210mm !important;
-        height: 297mm !important;
-        padding: 12mm !important;            /* margin dokumen di dalam halaman */
+        height: 297mm !important;     /* full A4 */
+        padding: 12mm !important;     /* margin dokumen di dalam halaman */
         box-sizing: border-box !important;
+        margin: 0 auto !important;
 
-        /* Rapikan tampilan saat print */
         box-shadow: none !important;
         border-radius: 0 !important;
 
-        /* Skala sedikit supaya konten selalu muat */
+        /* Sedikit diskala supaya aman 1 halaman */
         transform: scale(0.96) !important;
         transform-origin: top left !important;
 
-        /* Jangan buat halaman lanjutan */
         overflow: hidden !important;
         page-break-before: auto !important;
         page-break-after: avoid !important;
       }
 
-      /* Tipografi & tabel dipadatkan */
+      /* Tipografi/tabel padat */
       #po-print { font-size: 11px !important; }
       #po-print h2 { font-size: 16px !important; }
       #po-print .text-xl { font-size: 16px !important; }
@@ -112,7 +107,7 @@ export default function App() {
       #po-print th, #po-print td { padding: 3px 6px !important; }
       #po-print th { font-weight: 600; }
 
-      /* Hindari patah di bagian tabel */
+      /* Hindari patah di tabel */
       #po-print table, #po-print thead, #po-print tbody, #po-print tr, #po-print th, #po-print td, #po-print img {
         break-inside: avoid;
         page-break-inside: avoid;
@@ -120,7 +115,6 @@ export default function App() {
     }
   `}</style>
 );
-
 
  
  
