@@ -125,12 +125,13 @@ export default function App() {
     logoUrl: "https://iili.io/KBiv0xa.png", // opsional URL logo
 
     // ===== TTD (gambar/scan) =====
-    ttdUrl: "",         // URL PNG tanda tangan (atau dataURL)
-    ttdHeightMm: 24,    // tinggi maksimal tanda tangan (mm)
-    ttdX: 0,            // posisi X (px) relatif kotak TTD
-    ttdY: 0,            // posisi Y (px)
-    ttdScale: 1,        // skala (1 = 100%)
-  });
+    ttdUrl: "",          // URL PNG tanda tangan (atau dataURL)
+    ttdHeightMm: 24,     // tinggi maksimal gambar tanda tangan (berpengaruh hanya pada gambar)
+    ttdAreaHeightMm: 28, // tinggi RUANG TTD (spacer) agar jarak 'Pemesan' ↔ nama tetap
+    ttdX: 0,             // posisi X (px) relatif kotak TTD
+    ttdY: 0,             // posisi Y (px)
+    ttdScale: 1,         // skala (1 = 100%)
+  } as any);
 
   const [pemesan, setPemesan] = useState({
     nama: "apt. Bayu Bakti Angga S, M. Pharm. Sci.",
@@ -194,7 +195,7 @@ export default function App() {
   useEffect(() => {
     if (spAuto) {
       const seq = readSeq();
-      setHeader(h => Object.assign({}, h, { nomorSP: makeSpNumber(seq) }));
+      setHeader((h:any) => Object.assign({}, h, { nomorSP: makeSpNumber(seq) }));
     }
   }, [spAuto, poType]);
   function incrementSp() {
@@ -202,14 +203,14 @@ export default function App() {
     const cur = readSeq(now);
     const next = cur + 1;
     writeSeq(next, now);
-    setHeader(h => Object.assign({}, h, { nomorSP: makeSpNumber(next, now) }));
+    setHeader((h:any) => Object.assign({}, h, { nomorSP: makeSpNumber(next, now) }));
   }
   function decrementSp() {
     const now = new Date();
     const cur = readSeq(now);
     const next = Math.max(1, cur - 1);
     writeSeq(next, now);
-    setHeader(h => Object.assign({}, h, { nomorSP: makeSpNumber(next, now) }));
+    setHeader((h:any) => Object.assign({}, h, { nomorSP: makeSpNumber(next, now) }));
   }
 
   // === ZAT AKTIF: default + editable list (localStorage) ===
@@ -318,7 +319,7 @@ export default function App() {
     if (!dragging || !dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
-    setHeader(h => ({...h, ttdX: dragRef.current!.x0 + dx, ttdY: dragRef.current!.y0 + dy}));
+    setHeader((h:any) => ({...h, ttdX: dragRef.current!.x0 + dx, ttdY: dragRef.current!.y0 + dy}));
   }
   function onSigMouseUp() {
     setDragging(false);
@@ -398,41 +399,51 @@ export default function App() {
           {showMeta && (
             <Card title="Identitas Fasilitas Kesehatan">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input label="Judul Dokumen" value={header.judul} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{judul:v}))} />
-                <Input label="Nama Faskes" value={header.namaFaskes} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{namaFaskes:v}))} />
-                <Input label="Izin" value={header.izin} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{izin:v}))} />
-                <Input label="Telp" value={header.telp} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{telp:v}))} />
-                <Input label="Alamat" className="md:col-span-2" value={header.alamat} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{alamat:v}))} />
-                <Input label="Logo URL (opsional)" className="md:col-span-2" value={header.logoUrl} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{logoUrl:v}))} placeholder="https://.../logo.png" />
+                <Input label="Judul Dokumen" value={header.judul} onChange={(v:string)=> setHeader((h:any)=> Object.assign({},h,{judul:v}))} />
+                <Input label="Nama Faskes" value={header.namaFaskes} onChange={(v:string)=> setHeader((h:any)=> Object.assign({},h,{namaFaskes:v}))} />
+                <Input label="Izin" value={header.izin} onChange={(v:string)=> setHeader((h:any)=> Object.assign({},h,{izin:v}))} />
+                <Input label="Telp" value={header.telp} onChange={(v:string)=> setHeader((h:any)=> Object.assign({},h,{telp:v}))} />
+                <Input label="Alamat" className="md:col-span-2" value={header.alamat} onChange={(v:string)=> setHeader((h:any)=> Object.assign({},h,{alamat:v}))} />
+                <Input label="Logo URL (opsional)" className="md:col-span-2" value={header.logoUrl} onChange={(v:string)=> setHeader((h:any)=> Object.assign({},h,{logoUrl:v}))} placeholder="https://.../logo.png" />
 
                 {/* TTD controls */}
                 <Input
                   label="Tanda Tangan URL (opsional)"
                   className="md:col-span-2"
                   value={header.ttdUrl}
-                  onChange={(v:string)=> setHeader(h=> ({...h, ttdUrl:v}))}
-                  placeholder="https://iili.io/KBb62lS.png"
+                  onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdUrl:v}))}
+                  placeholder="https://.../tanda-tangan.png atau data:image/png;base64,..."
                 />
                 <Input
                   label="Tinggi maksimal TTD (mm)"
                   value={String(header.ttdHeightMm ?? 24)}
                   onChange={(v:string)=>{
                     const n = Math.max(10, Math.min(60, parseInt(v||'24',10) || 24));
-                    setHeader(h=> ({...h, ttdHeightMm: n}));
+                    setHeader((h:any)=> ({...h, ttdHeightMm: n}));
                   }}
                   type="number"
                 />
+                <Input
+                  label="Tinggi ruang TTD (mm) — jarak Pemesan ↔ Nama"
+                  value={String(header.ttdAreaHeightMm ?? 28)}
+                  onChange={(v:string)=>{
+                    const n = Math.max(10, Math.min(60, parseInt(v||'28',10) || 28));
+                    setHeader((h:any)=> ({...h, ttdAreaHeightMm: n}));
+                  }}
+                  type="number"
+                />
+
                 <div className="md:col-span-2 grid grid-cols-3 gap-3">
                   <Input
                     label="Posisi X (px)"
                     value={String(header.ttdX ?? 0)}
-                    onChange={(v:string)=> setHeader(h => ({...h, ttdX: parseInt(v||'0',10) || 0}))}
+                    onChange={(v:string)=> setHeader((h:any) => ({...h, ttdX: parseInt(v||'0',10) || 0}))}
                     type="number"
                   />
                   <Input
                     label="Posisi Y (px)"
                     value={String(header.ttdY ?? 0)}
-                    onChange={(v:string)=> setHeader(h => ({...h, ttdY: parseInt(v||'0',10) || 0}))}
+                    onChange={(v:string)=> setHeader((h:any) => ({...h, ttdY: parseInt(v||'0',10) || 0}))}
                     type="number"
                   />
                   <label className="block">
@@ -442,7 +453,7 @@ export default function App() {
                       value={Math.round((header.ttdScale ?? 1)*100)}
                       onChange={(e)=> {
                         const s = Math.max(0.5, Math.min(2, Number((e.target as HTMLInputElement).value)/100));
-                        setHeader(h => ({...h, ttdScale: s}));
+                        setHeader((h:any) => ({...h, ttdScale: s}));
                       }}
                       className="mt-1 w-full"
                     />
@@ -453,7 +464,7 @@ export default function App() {
                 </div>
 
                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                  <Input label="Nomor SP" value={header.nomorSP} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{nomorSP:v}))} />
+                  <Input label="Nomor SP" value={header.nomorSP} onChange={(v:string)=> setHeader((h:any)=> Object.assign({},h,{nomorSP:v}))} />
                   <label className="flex items-center gap-2 text-sm">
                     <input type="checkbox" checked={spAuto} onChange={(e)=> setSpAuto((e.target as HTMLInputElement).checked)} />
                     Nomor SP otomatis (per jenis)
@@ -629,7 +640,7 @@ export default function App() {
                       {showZatAktif && <td className="p-2 border border-black text-left">{it.zatAktif || ''}</td>}
                       <td className="p-2 border border-black text-left">{it.bentukKekuatan || ''}</td>
                       <td className="p-2 border border-black text-center">{it.satuan || ''}</td>
-                      <td className="p-2 border border-black text-center">{formatJumlah(it.jumlah)}</td>
+                      <td className="p-2 border border-black text-center">{String(it.jumlah || '')}</td>
                       <td className="p-2 border border-black text-left">{it.ket || ''}</td>
                     </tr>
                   ))}
@@ -647,7 +658,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Tanda tangan: drag & scale */}
+            {/* Tanda tangan: overlay (jarak tetap) + drag & scale */}
             <div className="mt-8 text-sm">
               <div className="flex justify-end">
                 <div className="w-80 text-center avoid-break">
@@ -656,12 +667,18 @@ export default function App() {
 
                   {header.ttdUrl ? (
                     <div
-                      className={`sig-box my-2 ${dragging ? 'select-none' : ''}`}
-                      style={{ minHeight: `${(header.ttdHeightMm ?? 24) + 4}mm`, position: 'relative' }}
+                      className={`${dragging ? 'select-none' : ''}`}
+                      style={{
+                        position: 'relative',
+                        height: `${header.ttdAreaHeightMm ?? 28}mm`, // RUANG tetap (spacer): menjaga jarak
+                        overflow: 'visible',
+                      }}
                       onMouseMove={onSigMouseMove}
                       onMouseUp={onSigMouseUp}
                       onMouseLeave={onSigMouseUp}
+                      title="Drag untuk memindahkan tanda tangan"
                     >
+                      {/* Layer gambar overlay absolut (tidak memengaruhi tinggi spacer) */}
                       <div
                         onMouseDown={onSigMouseDown}
                         style={{
@@ -671,14 +688,12 @@ export default function App() {
                           transform: `translate(-50%, -50%) scale(${header.ttdScale || 1})`,
                           cursor: 'move',
                         }}
-                        title="Drag untuk memindahkan tanda tangan"
                       >
                         <img
                           src={header.ttdUrl}
                           alt="Tanda tangan"
-                          className="sig-img"
                           style={{
-                            maxHeight: `${header.ttdHeightMm ?? 24}mm`,
+                            maxHeight: `${header.ttdHeightMm ?? 24}mm`, // batasi tinggi gambar saja
                             maxWidth: '100%',
                             objectFit: 'contain',
                             display: 'block'
@@ -688,10 +703,8 @@ export default function App() {
                       </div>
                     </div>
                   ) : (
-                    <div
-                      className="sig-box my-2"
-                      style={{ minHeight: `${(header.ttdHeightMm ?? 24) + 4}mm` }}
-                    />
+                    // Jika belum ada gambar, sisakan RUANG tetap agar layout rapi
+                    <div style={{ height: `${header.ttdAreaHeightMm ?? 28}mm` }} />
                   )}
 
                   <p className="font-semibold">{pemesan.nama}</p>
