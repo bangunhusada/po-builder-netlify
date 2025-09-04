@@ -53,36 +53,50 @@ function Select({ label, value, onChange, options, className = "" }: any) {
 
 /** ============== APP (DEFAULT EXPORT) ============== */
 export default function App() {
-  // Print CSS A4: hanya panel #po-print yang tercetak
+  // Print CSS A4: hanya panel PO yang tercetak (pakai clone supaya tidak blank)
   const PrintCSS = (
     <style>{`
       @page { size: A4 portrait; margin: 12mm; }
-      @media print {
-        /* Sembunyikan SEMUA elemen saat print */
-        body * { visibility: hidden !important; }
 
-        /* Tampilkan hanya area surat pesanan */
-        #po-print, #po-print * {
+      @media print {
+        html, body {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+          background: #fff !important;
+        }
+
+        /* Saat mode .printing aktif, sembunyikan semua kecuali #print-clone */
+        .printing * { display: none !important; }
+
+        .printing #print-clone,
+        .printing #print-clone * {
+          display: initial !important;
           visibility: visible !important;
         }
 
-        /* Pastikan posisi & ukuran pas */
-        #po-print {
-          position: absolute !important;
-          left: 0 !important;
-          top: 0 !important;
-          width: 100% !important;
+        /* Tata letak clone agar satu halaman A4 */
+        #print-clone {
+          position: fixed !important;
+          inset: 0 !important;           /* top/right/bottom/left: 0 */
+          margin: auto !important;
+          width: 186mm !important;       /* aman utk margin 12mm kiri–kanan */
+          background: #fff !important;
           box-shadow: none !important;
+          border-radius: 0 !important;
           padding: 0 !important;
         }
 
-        /* Hindari patah halaman */
-        #po-print, table, thead, tbody, tr, th, td, img {
+        /* Hindari pecah tabel/elemen */
+        #print-clone table,
+        #print-clone thead,
+        #print-clone tbody,
+        #print-clone tr,
+        #print-clone th,
+        #print-clone td,
+        #print-clone img {
           break-inside: avoid;
           page-break-inside: avoid;
         }
-
-        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       }
     `}</style>
   );
@@ -102,7 +116,8 @@ export default function App() {
     telp: "Telp : (0274) 488314",
     judul: "SURAT PESANAN",
     nomorSP: "",
-    logoUrl: "https://iili.io/KBiv0xa.png" // opsional URL logo
+    logoUrl: "https://iili.io/KBiv0xa.png", // opsional URL logo
+    ttdUrl: ""                               // <— URL gambar tanda tangan (opsional)
   });
 
   const [pemesan, setPemesan] = useState({
@@ -273,7 +288,32 @@ export default function App() {
   function capFirst(s:string){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
   function formatJumlah(val:any){ const n=parseInt(val,10); if(!isFinite(n)) return val||""; return String(n)+" ("+capFirst(terbilangID(n))+")"; }
   const line = useMemo(() => <div className="w-full h-px bg-gray-400 my-2" />, []);
-  const printDoc = () => { markSpUsedLocal(header.nomorSP); window.print(); };
+  
+  // CETAK: clone #po-print agar aman dari visibility parent
+  const printDoc = () => {
+    try {
+      markSpUsedLocal(header.nomorSP);
+
+      const src = document.getElementById('po-print');
+      if (!src) { window.print(); return; }
+
+      const clone = src.cloneNode(true) as HTMLElement;
+      clone.id = 'print-clone';
+      document.body.appendChild(clone);
+
+      document.body.classList.add('printing');
+
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+          document.body.classList.remove('printing');
+          try { clone.remove(); } catch {}
+        }, 100);
+      }, 50);
+    } catch {
+      window.print();
+    }
+  };
 
   function newPO(){
     setPbf({ nama: "", alamat: "", telp: "" });
@@ -328,6 +368,16 @@ export default function App() {
                 <Input label="Telp" value={header.telp} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{telp:v}))} />
                 <Input label="Alamat" className="md:col-span-2" value={header.alamat} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{alamat:v}))} />
                 <Input label="Logo URL (opsional)" className="md:col-span-2" value={header.logoUrl} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{logoUrl:v}))} placeholder="https://.../logo.png" />
+                
+                {/* Tanda tangan URL */}
+                <Input
+                  label="Tanda Tangan URL (opsional)"
+                  className="md:col-span-2"
+                  value={header.ttdUrl}
+                  onChange={(v:string)=> setHeader(h=> Object.assign({}, h, { ttdUrl: v })) }
+                  placeholder="https://.../tanda-tangan.png"
+                />
+
                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
                   <Input label="Nomor SP" value={header.nomorSP} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{nomorSP:v}))} />
                   <label className="flex items-center gap-2 text-sm">
@@ -438,7 +488,7 @@ export default function App() {
           </Card>
         </section>
 
-        {/* ===== PREVIEW SIDE ===== */}
+        {/* ===== PREVIEW SIDE (YANG DICETAK) ===== */}
         <section>
           <div id="po-print" className="print-page bg-white shadow-sm rounded-2xl p-6">
             {/* Kop */}
@@ -505,7 +555,7 @@ export default function App() {
                       {showZatAktif && <td className="p-2 border border-black text-left">{it.zatAktif || ''}</td>}
                       <td className="p-2 border border-black text-left">{it.bentukKekuatan || ''}</td>
                       <td className="p-2 border border-black text-center">{it.satuan || ''}</td>
-                      <td className="p-2 border border-black text-center">{String(it.jumlah || '')}</td>
+                      <td className="p-2 border border-black text-center">{formatJumlah(it.jumlah)}</td>
                       <td className="p-2 border border-black text-left">{it.ket || ''}</td>
                     </tr>
                   ))}
@@ -529,7 +579,13 @@ export default function App() {
                 <div className="w-80 text-center">
                   <p>{tanggalTempat.tempat}, {tanggalTempat.tanggal}</p>
                   <p>Pemesan</p>
-                  <div className="h-16" />
+
+                  {/* Jika ada URL tanda tangan, tampilkan gambar; jika tidak, sediakan ruang untuk basah */}
+                  {header.ttdUrl
+                    ? <img src={header.ttdUrl} alt="Tanda tangan" className="h-16 object-contain mx-auto" />
+                    : <div className="h-16" />
+                  }
+
                   <p className="font-semibold">{pemesan.nama}</p>
                   <p className="text-xs">SIPA : {pemesan.sipa}</p>
                 </div>
