@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 /** ============== UI PRIMITIVES ============== */
-function Card({ title, children }: any) {
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-2xl shadow p-4">
       <div className="flex items-center gap-2 mb-3">
@@ -12,7 +12,15 @@ function Card({ title, children }: any) {
     </div>
   );
 }
-function Input({ label, value, onChange, className = "", type = "text", placeholder = "" }: any) {
+function Input(props: {
+  label: string;
+  value: any;
+  onChange: (v: string) => void;
+  className?: string;
+  type?: string;
+  placeholder?: string;
+}) {
+  const { label, value, onChange, className = "", type = "text", placeholder = "" } = props;
   return (
     <label className={"block " + className}>
       <span className="text-xs text-gray-600">{label}</span>
@@ -26,7 +34,14 @@ function Input({ label, value, onChange, className = "", type = "text", placehol
     </label>
   );
 }
-function Select({ label, value, onChange, options, className = "" }: any) {
+function Select(props: {
+  label: string;
+  value: any;
+  onChange: (v: string) => void;
+  options: any[];
+  className?: string;
+}) {
+  const { label, value, onChange, options, className = "" } = props;
   const list = Array.isArray(options) ? options : [];
   return (
     <label className={"block " + className}>
@@ -53,24 +68,60 @@ function Select({ label, value, onChange, options, className = "" }: any) {
 
 /** ============== APP (DEFAULT EXPORT) ============== */
 export default function App() {
-  // Print CSS A4: hanya panel preview yang tercetak (no-print disembunyikan)
+  /** ==== PRINT CSS (PO SAJA, 1 HALAMAN) ==== */
   const PrintCSS = (
     <style>{`
-      @page { size: A4 portrait; margin: 12mm; }
+      /* A4 */
+      @page { size: A4 portrait; margin: 10mm; }
+
       @media print {
-        .no-print { display: none !important; }
-        .print-page { box-shadow: none !important; padding: 0 !important; width: 100%; }
-        .print-page, table, tr, img { break-inside: avoid; page-break-inside: avoid; }
-        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        html, body {
+          background: #fff !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .bg-gray-50 { background: #fff !important; }
+
+        /* Saat <html> diberi class printing-po, SEMUA elemen selain .po-keep & turunannya disembunyikan. */
+        html.printing-po body *:not(.po-keep):not(.po-keep *) {
+          display: none !important;
+        }
+
+        /* Area PO pas dengan margin A4 (10mm kiri-kanan) */
+        #po-print {
+          width: 186mm !important;     /* 210 - 2*10 */
+          margin: 0 auto !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          padding: 0 !important;
+          page-break-before: auto !important;
+          page-break-after: avoid !important;
+        }
+        /* Ganti padding container (tailwind p-6) saat print */
+        #po-print .p-6 { padding: 8mm !important; }
+
+        /* Font & tabel dipadatkan */
+        #po-print { font-size: 11px !important; }
+        #po-print h2 { font-size: 16px !important; }
+        #po-print .text-xl { font-size: 16px !important; }
+        #po-print .text-2xl { font-size: 18px !important; }
+
+        #po-print table { table-layout: fixed; width: 100%; border-collapse: collapse; }
+        #po-print th, #po-print td { padding: 3px 6px !important; }
+        #po-print table, #po-print thead, #po-print tbody, #po-print tr, #po-print th, #po-print td, #po-print img {
+          break-inside: avoid; page-break-inside: avoid;
+        }
       }
     `}</style>
   );
 
-  // === Netlify Functions mode (aktifkan Sheets tombol & fitur)
+  // === Aktifkan tombol Sheets (ubah sesuai kebutuhan) ===
   const hasSheets = true;
 
   // === State utama ===
-  const [poType, setPoType] = useState("Prekursor"); // Reguler | Prekursor | Obat-obat tertentu
+  const [poType, setPoType] = useState("Prekursor");
   const [spAuto, setSpAuto] = useState(true);
   const [showMeta, setShowMeta] = useState(false);
 
@@ -81,7 +132,7 @@ export default function App() {
     telp: "Telp : (0274) 488314",
     judul: "SURAT PESANAN",
     nomorSP: "",
-    logoUrl: "" // opsional URL logo
+    logoUrl: "https://iili.io/KBiv0xa.png"
   });
 
   const [pemesan, setPemesan] = useState({
@@ -103,11 +154,11 @@ export default function App() {
     tanggal: new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" }),
   });
 
-  const [items, setItems] = useState<any[]>([
-    { nama: "", zatAktif: "", bentukKekuatan: "", satuan: "", jumlah: "", ket: "" },
-  ]);
+  const [items, setItems] = useState<
+    Array<{ nama: string; zatAktif?: string; bentukKekuatan: string; satuan: string; jumlah: string; ket: string }>
+  >([{ nama: "", zatAktif: "", bentukKekuatan: "", satuan: "", jumlah: "", ket: "" }]);
 
-  // === Nomor SP Otomatis (REG/PRE/OOT + MM/YYYY) ===
+  // === Nomor SP Otomatis ===
   function typeCode(t: string) {
     const s = String(t || "").toLowerCase();
     if (s.indexOf("pre") === 0) return "PRE";
@@ -125,28 +176,26 @@ export default function App() {
     const mm = String(dd.getMonth() + 1).padStart(2, "0");
     const yyyy = dd.getFullYear();
     const nnn = String(seq || 1).padStart(3, "0");
-    return nnn + "/SP/" + typeCode(poType) + "/" + mm + "/" + yyyy;
-  }
+    return `${nnn}/SP/${typeCode(poType)}/${mm}/${yyyy}`;
+    }
   function getSpKey(d?: Date) {
     const dd = d || new Date();
     const y = dd.getFullYear();
     const m = String(dd.getMonth() + 1).padStart(2, "0");
-    return "sp-seq-" + typeCode(poType) + "-" + y + m;
+    return `sp-seq-${typeCode(poType)}-${y}${m}`;
   }
   function readSeq(d?: Date) {
     try {
       const raw = localStorage.getItem(getSpKey(d));
       const n = raw ? parseInt(raw, 10) : 1;
       return isFinite(n) && n > 0 ? n : 1;
-    } catch {
-      return 1;
-    }
+    } catch { return 1; }
   }
   function writeSeq(n: number, d?: Date) { try { localStorage.setItem(getSpKey(d), String(n)); } catch {} }
   useEffect(() => {
     if (spAuto) {
       const seq = readSeq();
-      setHeader(h => Object.assign({}, h, { nomorSP: makeSpNumber(seq) }));
+      setHeader(h => ({ ...h, nomorSP: makeSpNumber(seq) }));
     }
   }, [spAuto, poType]);
   function incrementSp() {
@@ -154,17 +203,17 @@ export default function App() {
     const cur = readSeq(now);
     const next = cur + 1;
     writeSeq(next, now);
-    setHeader(h => Object.assign({}, h, { nomorSP: makeSpNumber(next, now) }));
+    setHeader(h => ({ ...h, nomorSP: makeSpNumber(next, now) }));
   }
   function decrementSp() {
     const now = new Date();
     const cur = readSeq(now);
     const next = Math.max(1, cur - 1);
     writeSeq(next, now);
-    setHeader(h => Object.assign({}, h, { nomorSP: makeSpNumber(next, now) }));
+    setHeader(h => ({ ...h, nomorSP: makeSpNumber(next, now) }));
   }
 
-  // === ZAT AKTIF: default + editable list (localStorage) ===
+  // === ZAT AKTIF list (localStorage) ===
   const DEFAULT_PREKURSOR = [
     "Pseudoefedrin","Efedrin","Norefedrin","Ergometrin","Ergotamin","Anhidrida Asetat","Kalium Permanganat","Phenylpropanolamine HCl"
   ];
@@ -181,25 +230,13 @@ export default function App() {
     return [];
   }, [poType, preList, ootList]);
   const zatOptions = useMemo(() => {
-    const base = [{ value: "", label: "-- Pilih Zat Aktif --" }];
+    const base: any[] = [{ value: "", label: "-- Pilih Zat Aktif --" }];
     const list = Array.isArray(optionsZatAktif) ? optionsZatAktif : [];
-    for (let i=0;i<list.length;i++){ const x=list[i]; (base as any).push({ value: String(x), label: String(x) }); }
+    for (let i=0;i<list.length;i++){ const x=list[i]; base.push({ value: String(x), label: String(x) }); }
     return base;
   }, [optionsZatAktif]);
 
-  // Panel kelola daftar (tambah/ubah/hapus + reset)
-  const [zOpen, setZOpen] = useState(false);
-  const [preNew, setPreNew] = useState("");
-  const [ootNew, setOotNew] = useState("");
-  function addPre(){ const v=preNew.trim(); if(!v) return; setPreList(p => dedup(p.concat([v]))); setPreNew(""); }
-  function addOOT(){ const v=ootNew.trim(); if(!v) return; setOotList(p => dedup(p.concat([v]))); setOotNew(""); }
-  function delPre(i:number){ setPreList(p => p.filter((_,idx)=> idx!==i)); }
-  function delOOT(i:number){ setOotList(p => p.filter((_,idx)=> idx!==i)); }
-  function renamePre(i:number, val:string){ setPreList(p => { const c=p.slice(); c[i]=val; return dedup(c); }); }
-  function renameOOT(i:number, val:string){ setOotList(p => { const c=p.slice(); c[i]=val; return dedup(c); }); }
-  function resetZat(){ if (confirm("Kembalikan daftar ke bawaan? (Semua perubahan akan dihapus)")) { setPreList(dedup(DEFAULT_PREKURSOR)); setOotList(dedup(DEFAULT_OOT)); } }
-
-  // ===== FAVORIT ITEM (localStorage) =====
+  // ===== FAVORIT ITEM =====
   const [favOpen, setFavOpen] = useState(false);
   const [favorites, setFavorites] = useState<any[]>(() => { try { const v = JSON.parse(localStorage.getItem('fav-items') || 'null'); return Array.isArray(v) ? v : []; } catch { return []; } });
   useEffect(() => { try { localStorage.setItem('fav-items', JSON.stringify(favorites)); } catch {} }, [favorites]);
@@ -207,7 +244,7 @@ export default function App() {
   function addFromFavorite(i:number){ const f = favorites[i]; if(!f) return; setItems(prev => prev.concat([Object.assign({}, f)])); }
   function deleteFavorite(i:number){ setFavorites(prev => prev.filter((_, idx) => idx !== i)); }
 
-  // ===== TEMPLATE PBF (localStorage) =====
+  // ===== TEMPLATE PBF =====
   const [pbfOpen, setPbfOpen] = useState(false);
   const [pbfTemplates, setPbfTemplates] = useState<any[]>(() => { try { const v = JSON.parse(localStorage.getItem('pbf-templates') || 'null'); return Array.isArray(v) ? v : []; } catch { return []; } });
   useEffect(() => { try { localStorage.setItem('pbf-templates', JSON.stringify(pbfTemplates)); } catch {} }, [pbfTemplates]);
@@ -216,7 +253,7 @@ export default function App() {
   function deletePbfTemplate(i:number){ setPbfTemplates(prev => prev.filter((_, idx) => idx !== i)); }
   function renamePbfTemplate(i:number, field:string, val:string){ setPbfTemplates(prev => { const c = prev.slice(); if(!c[i]) return prev; c[i] = Object.assign({}, c[i], { [field]: val }); return c; }); }
 
-  // ===== Nomor SP Kunci Unik =====
+  // ===== Nomor SP Unik (lokal + optional remote) =====
   const [spRemoteStatus, setSpRemoteStatus] = useState('');
   function loadUsedSpLocal(){ try { const v = JSON.parse(localStorage.getItem('sp-used-local') || '[]'); return Array.isArray(v) ? new Set(v) : new Set(); } catch { return new Set(); } }
   function saveUsedSpLocal(setv:Set<string>){ try { localStorage.setItem('sp-used-local', JSON.stringify(Array.from(setv))); } catch {} }
@@ -242,17 +279,32 @@ export default function App() {
   async function loadHistory(){ try { setHistoryLoading(true); setHistoryError(""); const res = await fetch("/.netlify/functions/sheets-history"); const data = await res.json(); if (data && data.error) throw new Error(data.error.message||"Gagal memuat"); const rows = (data.rows || []) as any[]; setHistoryRows(rows); } catch(e:any){ console.error(e); setHistoryError(e.message||String(e)); } finally { setHistoryLoading(false); } }
   function restoreFromRow(row:any){ try { if (row && row.json) { const parsed = JSON.parse(row.json); if (parsed.poType) setPoType(parsed.poType); if (parsed.header) setHeader(parsed.header); if (parsed.pemesan) setPemesan(parsed.pemesan); if (parsed.pbf) setPbf(parsed.pbf); if (parsed.kebutuhan) setKebutuhan(parsed.kebutuhan); if (parsed.tanggalTempat) setTanggalTempat(parsed.tanggalTempat); if (parsed.items && parsed.items.length) setItems(parsed.items); setHistoryOpen(false); } else { alert("Baris ini tidak memiliki data JSON utuh untuk di-restore."); } } catch(e:any){ console.error(e); alert("Gagal memulihkan data: "+(e.message||e.toString())); } }
 
-  // Util terbilang
-  function terbilangID(num:any){ let n = Math.floor(Math.abs(Number(num) || 0)); if (n === 0) return "nol";
-    const angka = ["", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan"];
-    function tigaDigit(x:number){ let out=""; if (x >= 100){ if (x===100) return "seratus"; if (x<200) return "seratus "+tigaDigit(x-100); const r=Math.floor(x/100); out+=angka[r]+" ratus"; x=x%100; if(x) out+=" "+tigaDigit(x); return out; }
-      if (x >= 20){ const p=Math.floor(x/10); out+=angka[p]+" puluh"; const s=x%10; if(s) out+=" "+angka[s]; return out; }
-      if (x >= 12) return angka[x-10]+" belas"; if (x===11) return "sebelas"; if (x===10) return "sepuluh"; return angka[x]; }
-    const skala=["", "ribu", "juta", "miliar", "triliun"], parts:string[]=[]; let i=0; while(n>0){ const rem=n%1000; if(rem){ let ch=tigaDigit(rem); if(i===1 && rem===1) ch="seribu"; else if(i>0) ch+=" "+skala[i]; parts.unshift(ch); } n=Math.floor(n/1000); i++; } return parts.join(" "); }
-  function capFirst(s:string){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
-  function formatJumlah(val:any){ const n=parseInt(val,10); if(!isFinite(n)) return val||""; return String(n)+" ("+capFirst(terbilangID(n))+")"; }
-  const line = useMemo(() => <div className="w-full h-px bg-gray-400 my-2" />, []);
-  const printDoc = () => { markSpUsedLocal(header.nomorSP); window.print(); };
+  /** ==== CETAK: tandai leluhur #po-print sebagai .po-keep lalu print ==== */
+  const printDoc = () => {
+    markSpUsedLocal(header.nomorSP);
+
+    document.documentElement.classList.add('printing-po');
+
+    // tandai #po-print + semua leluhurnya .po-keep
+    const po = document.getElementById('po-print');
+    const kept: Element[] = [];
+    let n: Element | null = po;
+    while (n) {
+      n.classList.add('po-keep');
+      kept.push(n);
+      if (n === document.body) break;
+      n = n.parentElement;
+    }
+
+    window.print();
+
+    const cleanup = () => {
+      document.documentElement.classList.remove('printing-po');
+      kept.forEach(el => el.classList.remove('po-keep'));
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+  };
 
   function newPO(){
     setPbf({ nama: "", alamat: "", telp: "" });
@@ -260,15 +312,23 @@ export default function App() {
     if (spAuto) incrementSp();
   }
 
+  const line = useMemo(() => <div className="w-full h-px bg-gray-400 my-2" />, []);
+  function formatJumlah(val:any){ const n=parseInt(val,10); if(!isFinite(n)) return val||""; return String(n); }
+
+  // ====== STATE MODAL ZAT AKTIF (FIX YANG TADI HILANG) ======
+  const [zOpen, setZOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       {PrintCSS}
+
       {/* Toolbar (tidak dicetak) */}
       <div className="no-print sticky top-0 z-10 border-b bg-white/80 backdrop-blur px-4 py-3 flex items-center gap-2">
         <h1 className="text-lg font-semibold">Purchase Order – Builder (Lengkap)</h1>
         <div className="ml-auto flex gap-2">
           <button onClick={newPO} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">PO Baru</button>
           <button onClick={addRow} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Tambah Baris</button>
+          <button onClick={()=> setFavOpen(true)} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Favorit</button>
           <button onClick={()=> setZOpen(true)} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Kelola Zat Aktif</button>
           <button onClick={()=> { setHistoryOpen(true); loadHistory(); }} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Riwayat</button>
           {hasSheets && (
@@ -279,9 +339,8 @@ export default function App() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 p-4">
-        {/* ===== FORM SIDE ===== */}
+        {/* ===== FORM ===== */}
         <section className="space-y-6">
-          {/* Info fokus */}
           <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded-xl px-3 py-2 flex items-center justify-between">
             <div>
               <div className="text-sm font-medium">Mode fokus pengisian</div>
@@ -290,25 +349,23 @@ export default function App() {
             <button onClick={()=> setShowMeta(v=>!v)} className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50">{showMeta ? 'Sembunyikan' : 'Edit identitas'}</button>
           </div>
 
-          {/* Jenis PO */}
           <Card title="Jenis Purchase Order">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Select label="Jenis PO" value={poType} onChange={setPoType} options={["Reguler","Prekursor","Obat-obat tertentu"]} />
             </div>
           </Card>
 
-          {/* Identitas (opsional) */}
           {showMeta && (
             <Card title="Identitas Fasilitas Kesehatan">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input label="Judul Dokumen" value={header.judul} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{judul:v}))} />
-                <Input label="Nama Faskes" value={header.namaFaskes} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{namaFaskes:v}))} />
-                <Input label="Izin" value={header.izin} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{izin:v}))} />
-                <Input label="Telp" value={header.telp} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{telp:v}))} />
-                <Input label="Alamat" className="md:col-span-2" value={header.alamat} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{alamat:v}))} />
-                <Input label="Logo URL (opsional)" className="md:col-span-2" value={header.logoUrl} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{logoUrl:v}))} placeholder="https://.../logo.png" />
+                <Input label="Judul Dokumen" value={header.judul} onChange={(v)=> setHeader(h=> ({...h, judul:v}))} />
+                <Input label="Nama Faskes" value={header.namaFaskes} onChange={(v)=> setHeader(h=> ({...h, namaFaskes:v}))} />
+                <Input label="Izin" value={header.izin} onChange={(v)=> setHeader(h=> ({...h, izin:v}))} />
+                <Input label="Telp" value={header.telp} onChange={(v)=> setHeader(h=> ({...h, telp:v}))} />
+                <Input label="Alamat" className="md:col-span-2" value={header.alamat} onChange={(v)=> setHeader(h=> ({...h, alamat:v}))} />
+                <Input label="Logo URL (opsional)" className="md:col-span-2" value={header.logoUrl} onChange={(v)=> setHeader(h=> ({...h, logoUrl:v}))} />
                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                  <Input label="Nomor SP" value={header.nomorSP} onChange={(v:string)=> setHeader(h=> Object.assign({},h,{nomorSP:v}))} />
+                  <Input label="Nomor SP" value={header.nomorSP} onChange={(v)=> setHeader(h=> ({...h, nomorSP:v}))} />
                   <label className="flex items-center gap-2 text-sm">
                     <input type="checkbox" checked={spAuto} onChange={(e)=> setSpAuto((e.target as HTMLInputElement).checked)} />
                     Nomor SP otomatis (per jenis)
@@ -329,29 +386,6 @@ export default function App() {
             </Card>
           )}
 
-          {/* Pemesan (opsional) */}
-          {showMeta && (
-            <Card title="Pemesan">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input label="Nama" value={pemesan.nama} onChange={(v:string)=> setPemesan(p=> Object.assign({},p,{nama:v}))} />
-                <Input label="Jabatan" value={pemesan.jabatan} onChange={(v:string)=> setPemesan(p=> Object.assign({},p,{jabatan:v}))} />
-                <Input label="Nomor SIPA" className="md:col-span-2" value={pemesan.sipa} onChange={(v:string)=> setPemesan(p=> Object.assign({},p,{sipa:v}))} />
-              </div>
-            </Card>
-          )}
-
-          {/* Kebutuhan Faskes (opsional) */}
-          {showMeta && (
-            <Card title="Kebutuhan Faskes">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input label="Nama Klinik" value={kebutuhan.namaKlinik} onChange={(v:string)=> setKebutuhan(k=> Object.assign({},k,{namaKlinik:v}))} />
-                <Input label="No. Izin" value={kebutuhan.noIzin} onChange={(v:string)=> setKebutuhan(k=> Object.assign({},k,{noIzin:v}))} />
-                <Input label="Alamat" className="md:col-span-2" value={kebutuhan.alamat} onChange={(v:string)=> setKebutuhan(k=> Object.assign({},k,{alamat:v}))} />
-              </div>
-            </Card>
-          )}
-
-          {/* Daftar Item */}
           <Card title="Mengajukan pesanan obat kepada">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end mb-2">
               <label className="block">
@@ -365,9 +399,9 @@ export default function App() {
               <button onClick={()=> setPbfOpen(true)} className="px-3 py-2 rounded-xl border text-sm">Kelola Template</button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input label="Nama PBF" value={pbf.nama} onChange={(v:string)=> setPbf({...pbf, nama:v})} />
-              <Input label="Telepon" value={pbf.telp} onChange={(v:string)=> setPbf({...pbf, telp:v})} />
-              <Input label="Alamat" className="md:col-span-2" value={pbf.alamat} onChange={(v:string)=> setPbf({...pbf, alamat:v})} />
+              <Input label="Nama PBF" value={pbf.nama} onChange={(v)=> setPbf({...pbf, nama:v})} />
+              <Input label="Telepon" value={pbf.telp} onChange={(v)=> setPbf({...pbf, telp:v})} />
+              <Input label="Alamat" className="md:col-span-2" value={pbf.alamat} onChange={(v)=> setPbf({...pbf, alamat:v})} />
             </div>
           </Card>
 
@@ -383,24 +417,24 @@ export default function App() {
               {items.map((it, idx) => (
                 <div key={idx} className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-12 md:col-span-4">
-                    <Input label={`Nama Obat #${idx+1}`} placeholder="Nama Obat" value={it.nama} onChange={(v:string)=> handleItemChange(idx, 'nama', v)} />
+                    <Input label={`Nama Obat #${idx+1}`} placeholder="Nama Obat" value={it.nama} onChange={(v)=> handleItemChange(idx, 'nama', v)} />
                   </div>
                   {showZatAktif && (
                     <div className="col-span-6 md:col-span-2">
-                      <Select label="Zat Aktif" value={it.zatAktif || ''} onChange={(v:string)=> handleItemChange(idx, 'zatAktif', v)} options={zatOptions} />
+                      <Select label="Zat Aktif" value={it.zatAktif || ''} onChange={(v)=> handleItemChange(idx, 'zatAktif', v)} options={zatOptions} />
                     </div>
                   )}
                   <div className="col-span-6 md:col-span-3">
-                    <Input label="Bentuk & Kekuatan" value={it.bentukKekuatan} onChange={(v:string)=> handleItemChange(idx, 'bentukKekuatan', v)} />
+                    <Input label="Bentuk & Kekuatan" value={it.bentukKekuatan} onChange={(v)=> handleItemChange(idx, 'bentukKekuatan', v)} />
                   </div>
                   <div className="col-span-4 md:col-span-1">
-                    <Input label="Satuan" value={it.satuan} onChange={(v:string)=> handleItemChange(idx, 'satuan', v)} />
+                    <Input label="Satuan" value={it.satuan} onChange={(v)=> handleItemChange(idx, 'satuan', v)} />
                   </div>
                   <div className="col-span-4 md:col-span-1">
-                    <Input label="Jumlah" placeholder="Jumlah" value={String(it.jumlah || '')} onChange={(v:string)=> handleItemChange(idx, 'jumlah', v)} />
+                    <Input label="Jumlah" placeholder="Jumlah" value={String(it.jumlah || '')} onChange={(v)=> handleItemChange(idx, 'jumlah', v)} />
                   </div>
                   <div className="col-span-4 md:col-span-1">
-                    <Input label="Ket" value={it.ket} onChange={(v:string)=> handleItemChange(idx, 'ket', v)} />
+                    <Input label="Ket" value={it.ket} onChange={(v)=> handleItemChange(idx, 'ket', v)} />
                   </div>
                   <div className="col-span-12 flex justify-between gap-2">
                     <button onClick={()=> saveFavFromRow(idx)} className="text-xs px-2 py-1 border rounded-lg">Simpan ke Favorit</button>
@@ -417,9 +451,9 @@ export default function App() {
           </Card>
         </section>
 
-        {/* ===== PREVIEW SIDE ===== */}
+        {/* ===== PREVIEW (YANG DICETAK) ===== */}
         <section>
-          <div className="print-page bg-white shadow-sm rounded-2xl p-6">
+          <div id="po-print" className="print-page bg-white shadow-sm rounded-2xl p-6">
             {/* Kop */}
             <div className="flex items-start gap-4">
               {header.logoUrl ? (
@@ -436,7 +470,7 @@ export default function App() {
                 <div className="text-xl font-bold tracking-wide">{typeUpper(poType)}</div>
               </div>
             </div>
-            <div className="w-full h-px bg-gray-400 my-2"></div>
+            {line}
 
             <div className="text-center text-sm">
               <div><span className="font-medium">Nomor SP : </span><span>{header.nomorSP}</span></div>
@@ -484,7 +518,7 @@ export default function App() {
                       {showZatAktif && <td className="p-2 border border-black text-left">{it.zatAktif || ''}</td>}
                       <td className="p-2 border border-black text-left">{it.bentukKekuatan || ''}</td>
                       <td className="p-2 border border-black text-center">{it.satuan || ''}</td>
-                      <td className="p-2 border border-black text-center">{String(it.jumlah || '')}</td>
+                      <td className="p-2 border border-black text-center">{formatJumlah(it.jumlah)}</td>
                       <td className="p-2 border border-black text-left">{it.ket || ''}</td>
                     </tr>
                   ))}
@@ -521,67 +555,15 @@ export default function App() {
         </section>
       </div>
 
-      {/* PANEL KELOLA ZAT AKTIF */}
-      {zOpen && (
-        <div className="fixed inset-0 z-40">
-          <div className="absolute inset-0 bg-black/30" onClick={()=> setZOpen(false)} />
-          <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-4 overflow-y-auto">
-            <div className="flex items-center gap-2 mb-3">
-              <h3 className="text-lg font-semibold">Kelola Zat Aktif</h3>
-              <div className="ml-auto flex gap-2">
-                <button onClick={resetZat} className="px-3 py-2 border rounded-lg text-sm">Reset ke Default</button>
-                <button onClick={()=> setZOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-medium mb-2">Prekursor (Tambah/Ubah)</h4>
-                <div className="flex gap-2 mb-3">
-                  <input value={preNew} onChange={(e)=> setPreNew((e.target as HTMLInputElement).value)} placeholder="Tambah zat aktif prekursor..." className="flex-1 rounded-xl border px-3 py-2 text-sm" />
-                  <button onClick={addPre} className="px-3 py-2 border rounded-lg text-sm">Tambah</button>
-                </div>
-                <div className="space-y-2">
-                  {preList.length === 0 && <div className="text-xs text-gray-500">Belum ada item.</div>}
-                  {preList.map((v,i)=> (
-                    <div key={i} className="flex items-center gap-2">
-                      <input value={v} onChange={(e)=> renamePre(i, (e.target as HTMLInputElement).value)} className="flex-1 rounded-xl border px-3 py-2 text-sm" />
-                      <button onClick={()=> delPre(i)} className="px-2 py-2 border rounded-lg text-xs">Hapus</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h4 className="font-medium mb-2">Obat-obat Tertentu (Tambah/Ubah)</h4>
-                <div className="flex gap-2 mb-3">
-                  <input value={ootNew} onChange={(e)=> setOotNew((e.target as HTMLInputElement).value)} placeholder="Tambah zat aktif OOT..." className="flex-1 rounded-xl border px-3 py-2 text-sm" />
-                  <button onClick={addOOT} className="px-3 py-2 border rounded-lg text-sm">Tambah</button>
-                </div>
-                <div className="space-y-2">
-                  {ootList.length === 0 && <div className="text-xs text-gray-500">Belum ada item.</div>}
-                  {ootList.map((v,i)=> (
-                    <div key={i} className="flex items-center gap-2">
-                      <input value={v} onChange={(e)=> renameOOT(i, (e.target as HTMLInputElement).value)} className="flex-1 rounded-xl border px-3 py-2 text-sm" />
-                      <button onClick={()=> delOOT(i)} className="px-2 py-2 border rounded-lg text-xs">Hapus</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <p className="mt-6 text-xs text-gray-500">Perubahan tersimpan otomatis di perangkat ini (localStorage).</p>
-          </div>
-        </div>
-      )}
-
-      {/* PANEL FAVORIT */}
+      {/* ===== Modal/Panel Favorit, Zat Aktif, Template PBF, Riwayat ===== */}
+      {/* Favorit */}
       {favOpen && (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/30" onClick={()=> setFavOpen(false)} />
           <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-4 overflow-y-auto">
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-lg font-semibold">Favorit Item</h3>
-              <div className="ml-auto flex gap-2">
-                <button onClick={()=> setFavOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
-              </div>
+              <div className="ml-auto"><button onClick={()=> setFavOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button></div>
             </div>
             {favorites.length===0 ? (
               <p className="text-sm text-gray-600">Belum ada favorit. Gunakan tombol <b>Simpan ke Favorit</b> pada baris item.</p>
@@ -603,24 +585,62 @@ export default function App() {
         </div>
       )}
 
-      {/* PANEL TEMPLATE PBF */}
+      {/* Kelola Zat Aktif */}
+      {zOpen && (
+        <div className="fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/30" onClick={()=> setZOpen(false)} />
+          <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-4 overflow-y-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-lg font-semibold">Kelola Zat Aktif</h3>
+              <div className="ml-auto"><button onClick={()=> setZOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-medium mb-2">Prekursor (Tambah/Ubah)</h4>
+                <div className="space-y-2">
+                  {preList.length === 0 && <div className="text-xs text-gray-500">Belum ada item.</div>}
+                  {preList.map((v,i)=> (
+                    <div key={i} className="flex items-center gap-2">
+                      <input value={v} onChange={(e)=> setPreList(p=>{ const c=p.slice(); c[i]=(e.target as HTMLInputElement).value; return c; })} className="flex-1 rounded-xl border px-3 py-2 text-sm" />
+                      <button onClick={()=> setPreList(p=> p.filter((_,idx)=> idx!==i))} className="px-2 py-2 border rounded-lg text-xs">Hapus</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">Obat-obat Tertentu (Tambah/Ubah)</h4>
+                <div className="space-y-2">
+                  {ootList.length === 0 && <div className="text-xs text-gray-500">Belum ada item.</div>}
+                  {ootList.map((v,i)=> (
+                    <div key={i} className="flex items-center gap-2">
+                      <input value={v} onChange={(e)=> setOotList(p=>{ const c=p.slice(); c[i]=(e.target as HTMLInputElement).value; return c; })} className="flex-1 rounded-xl border px-3 py-2 text-sm" />
+                      <button onClick={()=> setOotList(p=> p.filter((_,idx)=> idx!==i))} className="px-2 py-2 border rounded-lg text-xs">Hapus</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <p className="mt-6 text-xs text-gray-500">Perubahan tersimpan otomatis di perangkat ini (localStorage).</p>
+          </div>
+        </div>
+      )}
+
+      {/* Kelola Template PBF */}
       {pbfOpen && (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/30" onClick={()=> setPbfOpen(false)} />
           <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-4 overflow-y-auto">
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-lg font-semibold">Kelola Template PBF</h3>
-              <div className="ml-auto flex gap-2">
-                <button onClick={()=> setPbfOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
-              </div>
+              <div className="ml-auto"><button onClick={()=> setPbfOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button></div>
             </div>
             {pbfTemplates.length===0 && <p className="text-sm text-gray-600">Belum ada template. Isi data PBF lalu klik <b>Simpan sebagai Template</b>.</p>}
             <div className="space-y-3">
               {pbfTemplates.map((t,i)=> (
                 <div key={i} className="border rounded-xl p-3 text-sm grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
-                  <Input label="Nama" value={t.nama} onChange={(v:string)=> renamePbfTemplate(i,'nama',v)} />
-                  <Input label="Telepon" value={t.telp} onChange={(v:string)=> renamePbfTemplate(i,'telp',v)} />
-                  <Input label="Alamat" className="md:col-span-3" value={t.alamat} onChange={(v:string)=> renamePbfTemplate(i,'alamat',v)} />
+                  <Input label="Nama" value={t.nama} onChange={(v)=> renamePbfTemplate(i,'nama',v)} />
+                  <Input label="Telepon" value={t.telp} onChange={(v)=> renamePbfTemplate(i,'telp',v)} />
+                  <Input label="Alamat" className="md:col-span-3" value={t.alamat} onChange={(v)=> renamePbfTemplate(i,'alamat',v)} />
                   <div className="md:col-span-3 flex justify-end gap-2">
                     <button onClick={()=> applyPbfTemplate(i)} className="px-2 py-1 border rounded-lg text-xs">Gunakan</button>
                     <button onClick={()=> deletePbfTemplate(i)} className="px-2 py-1 border rounded-lg text-xs">Hapus</button>
@@ -632,16 +652,14 @@ export default function App() {
         </div>
       )}
 
-      {/* PANEL RIWAYAT (Google Sheets) */}
+      {/* Riwayat (Sheets) */}
       {historyOpen && (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/30" onClick={()=> setHistoryOpen(false)} />
           <div className="absolute right-0 top-0 h-full w-full max-w-3xl bg-white shadow-xl p-4 overflow-y-auto">
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-lg font-semibold">Riwayat (Google Sheets)</h3>
-              <div className="ml-auto flex gap-2">
-                <button onClick={()=> setHistoryOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
-              </div>
+              <div className="ml-auto"><button onClick={()=> setHistoryOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button></div>
             </div>
             {historyLoading && <p className="text-sm">Memuat...</p>}
             {historyError && <p className="text-sm text-red-600">Error: {historyError}</p>}
