@@ -54,59 +54,66 @@ function Select({ label, value, onChange, options, className = "" }: any) {
 /** ============== APP (DEFAULT EXPORT) ============== */
 export default function App() {
   // Print CSS A4: hanya panel #po-print yang tercetak & muat 1 halaman
-  const PrintCSS = (
-    <style>{`
-      /* A4: 210mm x 297mm */
-      @page { size: A4 portrait; margin: 10mm; }
+ const PrintCSS = (
+  <style>{`
+    /* A4: 210mm x 297mm */
+    @page { size: A4 portrait; margin: 12mm; }
 
-      @media print {
-        /* Sembunyikan semua di luar area PO */
-        body * { visibility: hidden !important; }
-        #po-print, #po-print * { visibility: visible !important; }
+    @media print {
+      /* Sembunyikan semua di luar area PO */
+      body * { visibility: hidden !important; }
+      #po-print, #po-print * { visibility: visible !important; }
 
-        /* Reset global */
-        html, body {
-          margin: 0 !important;
-          padding: 0 !important;
-          height: auto !important;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-
-        /* Kunci lebar konten agar tidak tumpah ke halaman 2 */
-        /* 210mm - 20mm = 190mm; beri buffer -> 186mm */
-        #po-print {
-          position: static !important;
-          width: 186mm !important;
-          margin: 0 auto !important;
-          box-shadow: none !important;
-          border-radius: 0 !important;
-          padding: 0 !important;
-        }
-
-        /* Kencangkan padding internal container (tailwind p-6) */
-        #po-print .p-6 { padding: 8mm !important; }
-
-        /* Perkecil tipografi saat print */
-        #po-print { font-size: 11px !important; }
-        #po-print h2 { font-size: 16px !important; }
-        #po-print .text-xl { font-size: 16px !important; }
-        #po-print .text-2xl { font-size: 18px !important; }
-
-        /* Tabel lebih padat & stabil */
-        #po-print table { table-layout: fixed; width: 100%; border-collapse: collapse; }
-        #po-print th, #po-print td { padding: 3px 6px !important; }
-        #po-print th { font-weight: 600; }
-
-        /* Hindari patah di elemen penting */
-        #po-print, table, thead, tbody, tr, th, td, img {
-          break-inside: avoid;
-          page-break-inside: avoid;
-        }
+      /* Reset global */
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
-    `}</style>
-  );
 
+      /* Kunci lebar + hilangkan shadow/border-radius saat print */
+      /* Lebar 180mm + padding 6mm kiri/kanan = 192mm (<= 210 - 2*12 = 186mm)? 
+         Agar pasti muat, kita jadikan width 174mm + padding 6mm = 186mm pas. */
+      #po-print {
+        position: static !important;
+        width: 174mm !important;
+        margin: 0 auto !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        page-break-before: auto !important;
+        page-break-after: avoid !important;   /* cegah halaman kosong setelahnya */
+      }
+
+      /* Gantikan padding .p-6 saat print -> 6mm (kiri/kanan + atas/bawah) */
+      #po-print .p-6 { padding: 6mm !important; }
+
+      /* Tipografi sedikit diperkecil agar tinggi total aman 1 halaman */
+      #po-print { font-size: 11px !important; }
+      #po-print h2 { font-size: 16px !important; }
+      #po-print .text-xl { font-size: 16px !important; }
+      #po-print .text-2xl { font-size: 18px !important; }
+
+      /* Tabel padat & stabil */
+      #po-print table { table-layout: fixed; width: 100%; border-collapse: collapse; }
+      #po-print th, #po-print td { padding: 3px 6px !important; }
+      #po-print th { font-weight: 600; }
+
+      /* Hindari patah di elemen penting TAPI jangan di root-nya (#po-print) */
+      table, thead, tbody, tr, th, td, img {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+    }
+  `}</style>
+);
+
+ 
+ 
+ 
   // === Netlify Functions mode (aktifkan Sheets tombol & fitur)
   const hasSheets = true;
 
