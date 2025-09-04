@@ -54,52 +54,47 @@ function Select({ label, value, onChange, options, className = "" }: any) {
 /** ============== APP (DEFAULT EXPORT) ============== */
 export default function App() {
   /** ====== PRINT CSS (A4, clone-only) ====== */
-  const PrintCSS = (
-    <style>{`
-      @page { size: A4 portrait; margin: 12mm; }
+ 
+ 
+ const PrintCSS = (
+  <style>{`
+    /* A4, margin 12mm */
+    @page { size: A4 portrait; margin: 12mm; }
 
-      @media print {
-        html, body {
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-          background: #fff !important;
-        }
-        /* Sembunyikan semua saat print, kecuali clone */
-        .printing * { display: none !important; }
+    @media print {
+      /* Sembunyikan semua konten halaman */
+      body > * { display: none !important; }
 
-        .printing #print-clone,
-        .printing #print-clone * {
-          display: initial !important;
-          visibility: visible !important;
-        }
-
-        #print-clone {
-          position: fixed !important;
-          inset: 0 !important;
-          margin: auto !important;
-          width: 186mm !important;   /* aman utk margin kiri-kanan 12mm */
-          background: #fff !important;
-          box-shadow: none !important;
-          border-radius: 0 !important;
-          padding: 0 !important;
-        }
-
-        #print-clone table,
-        #print-clone thead,
-        #print-clone tbody,
-        #print-clone tr,
-        #print-clone th,
-        #print-clone td,
-        #print-clone img {
-          break-inside: avoid;
-          page-break-inside: avoid;
-        }
-
-        .avoid-break { break-inside: avoid; page-break-inside: avoid; }
-        .select-none { user-select: none; }
+      /* Tampilkan hanya surat pesanan */
+      #po-print {
+        display: block !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 auto !important;
+        width: 190mm !important;   /* lebar aman A4 - margin */
       }
-    `}</style>
-  );
+
+      /* Pastikan anak-anak #po-print terlihat & rapi */
+      #po-print * { visibility: visible !important; }
+
+      /* Rapikan tabel saat print */
+      #po-print table { border-collapse: collapse !important; }
+      #po-print th, #po-print td { border: 1px solid #000 !important; }
+
+      /* Hindari halaman kosong/patah baris aneh */
+      #po-print, #po-print table, #po-print tr, #po-print img {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      /* Warna penuh saat print */
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  `}</style>
+);
+
+ 
+ 
 
   /** ====== FLAGS ====== */
   const hasSheets = true; // Netlify Functions untuk Google Sheets
