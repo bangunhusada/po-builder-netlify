@@ -58,36 +58,38 @@ export default function App() {
  
  const PrintCSS = (
   <style>{`
-    /* A4, margin 12mm */
     @page { size: A4 portrait; margin: 12mm; }
 
     @media print {
-      /* Sembunyikan semua konten halaman */
-      body > * { display: none !important; }
+      /* Sembunyikan seluruh halaman, tapi jangan pakai display:none agar layout tidak runtuh */
+      body { visibility: hidden !important; margin: 0 !important; }
 
-      /* Tampilkan hanya surat pesanan */
+      /* Tampilkan hanya area PO */
+      #po-print, #po-print * { visibility: visible !important; }
+
+      /* Letakkan PO tepat di halaman cetak */
       #po-print {
-        display: block !important;
-        box-shadow: none !important;
+        position: fixed !important;   /* lepas dari layout app */
+        left: 0 !important;
+        top: 0 !important;
+        width: 186mm !important;      /* lebar aman A4 (210 - 2*12) */
+        margin: 0 !important;
         padding: 0 !important;
-        margin: 0 auto !important;
-        width: 190mm !important;   /* lebar aman A4 - margin */
+        box-shadow: none !important;
+        background: #fff !important;
       }
-
-      /* Pastikan anak-anak #po-print terlihat & rapi */
-      #po-print * { visibility: visible !important; }
 
       /* Rapikan tabel saat print */
       #po-print table { border-collapse: collapse !important; }
       #po-print th, #po-print td { border: 1px solid #000 !important; }
 
-      /* Hindari halaman kosong/patah baris aneh */
+      /* Hindari patahan halaman aneh */
       #po-print, #po-print table, #po-print tr, #po-print img {
         break-inside: avoid;
         page-break-inside: avoid;
       }
 
-      /* Warna penuh saat print */
+      /* Pastikan warna muncul */
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   `}</style>
