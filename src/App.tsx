@@ -54,51 +54,55 @@ function Select({ label, value, onChange, options, className = "" }: any) {
 /** ============== APP (DEFAULT EXPORT) ============== */
 export default function App() {
   // Print CSS A4: hanya panel #po-print yang tercetak & muat 1 halaman
+ 
  const PrintCSS = (
   <style>{`
     /* A4: 210mm x 297mm */
     @page { size: A4 portrait; margin: 12mm; }
 
     @media print {
-      /* SEMBUNYIKAN elemen tertentu pakai display agar tidak ambil tempat */
+      /* Hilangkan toolbar/elemen non-print dari layout */
       .no-print { display: none !important; }
 
-      /* Sembunyikan semua elemen secara visual */
+      /* Sembunyikan semua secara visual */
       body * { visibility: hidden !important; }
 
-      /* TAMPILKAN hanya area surat pesanan */
+      /* Tampilkan hanya area surat pesanan */
       #po-print, #po-print * { visibility: visible !important; }
 
-      /* Keluarkan dari flow supaya nempel di halaman pertama (hilangkan page kosong) */
+      /* Keluarkan dari flow TANPA diulang per halaman (pakai absolute, bukan fixed) */
       #po-print {
-        position: fixed !important;   /* kunci di posisi layar */
+        position: absolute !important;
         top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        margin: 0 auto !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        margin: 0 !important;
 
-        /* Lebar aman dalam margin A4: 174mm + padding 6mm kiri/kanan = 186mm */
+        /* Lebar aman dalam margin A4:
+           174mm + padding 6mm kiri/kanan = 186mm pas dengan @page margin 12mm */
         width: 174mm !important;
+
         box-shadow: none !important;
         border-radius: 0 !important;
         padding: 0 !important;
+        overflow: visible !important;
       }
 
-      /* Ganti padding kontainer (tailwind p-6) saat print */
+      /* Ganti padding container (tailwind p-6) saat print */
       #po-print .p-6 { padding: 6mm !important; }
 
-      /* Tipografi dipadatkan agar 1 halaman */
+      /* Tipografi dipadatkan agar muat 1 halaman */
       #po-print { font-size: 11px !important; }
       #po-print h2 { font-size: 16px !important; }
       #po-print .text-xl { font-size: 16px !important; }
       #po-print .text-2xl { font-size: 18px !important; }
 
-      /* Tabel lebih rapat dan stabil */
+      /* Tabel rapat & stabil */
       #po-print table { table-layout: fixed; width: 100%; border-collapse: collapse; }
       #po-print th, #po-print td { padding: 3px 6px !important; }
       #po-print th { font-weight: 600; }
 
-      /* Hindari patah di elemen penting */
+      /* Hindari patah pada bagian tabel saja */
       table, thead, tbody, tr, th, td, img {
         break-inside: avoid;
         page-break-inside: avoid;
@@ -110,6 +114,7 @@ export default function App() {
   `}</style>
 );
 
+ 
  
   // === Netlify Functions mode (aktifkan Sheets tombol & fitur)
   const hasSheets = true;
