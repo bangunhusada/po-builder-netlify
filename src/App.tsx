@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-/** ============== UI PRIMITIVES ============== */
+/** ================= UI PRIMITIVES ================= */
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-2xl shadow p-4">
@@ -66,66 +66,63 @@ function Select(props: {
   );
 }
 
-/** ============== APP (DEFAULT EXPORT) ============== */
+/** ================= APP ================= */
 export default function App() {
-  /** ==== PRINT CSS (PO SAJA, 1 HALAMAN) ==== */
-  
+  /** ==== PRINT CSS: hanya #po-print, 1 halaman ==== */
   const PrintCSS = (
-  <style>{`
-    /* Kertas A4 */
-    @page { size: A4 portrait; margin: 10mm; }
+    <style>{`
+      /* Kertas A4 */
+      @page { size: A4 portrait; margin: 10mm; }
 
-    @media print {
-      html, body {
-        background: #fff !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+      @media print {
+        html, body {
+          background: #fff !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        /* SEMUA elemen disembunyikan saat print */
+        body * { visibility: hidden !important; }
+
+        /* Kecuali #po-print dan isinya */
+        #po-print, #po-print * { visibility: visible !important; }
+
+        /* Angkat #po-print dari flow agar elemen lain tak memengaruhi pagination */
+        #po-print {
+          position: fixed !important;
+          inset: 0 !important;             /* top/right/bottom/left: 0 */
+          width: 186mm !important;          /* aman utk margin 10mm kiri-kanan */
+          height: auto !important;
+          margin: auto !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+        }
+
+        /* Kompakkan padding kontainer saat print */
+        #po-print .p-6 { padding: 8mm !important; }
+
+        /* Sedikit kompak agar aman 1 halaman */
+        #po-print { font-size: 11px !important; }
+        #po-print h2 { font-size: 16px !important; }
+        #po-print .text-xl { font-size: 16px !important; }
+        #po-print .text-2xl { font-size: 18px !important; }
+
+        /* Tabel stabil & anti pecah */
+        #po-print table { table-layout: fixed; width: 100%; border-collapse: collapse; }
+        #po-print th, #po-print td { padding: 3px 6px !important; }
+        #po-print table, #po-print thead, #po-print tbody, #po-print tr, #po-print th, #po-print td, #po-print img {
+          break-inside: avoid; page-break-inside: avoid;
+        }
       }
+    `}</style>
+  );
 
-      /* SEMUA elemen disembunyikan */
-      body * { visibility: hidden !important; }
+  // === (opsional) tombol Sheets dimatikan dulu agar tidak bikin error bila belum disetup ===
+  const hasSheets = false;
 
-      /* HANYA #po-print yang kelihatan */
-      #po-print, #po-print * { visibility: visible !important; }
-
-      /* Letakkan PO fixed di halaman, sehingga elemen lain (yang hidden) TIDAK memengaruhi pagination */
-      #po-print {
-        position: fixed !important;       /* kunci di halaman */
-        inset: 0 !important;              /* top/right/bottom/left: 0 */
-        width: 186mm !important;          /* pas A4 margin 10mm kiri-kanan */
-        height: auto !important;
-        margin: auto !important;
-        box-shadow: none !important;
-        border-radius: 0 !important;
-      }
-
-      /* Ganti padding kontainer saat print */
-      #po-print .p-6 { padding: 8mm !important; }
-
-      /* Padatkan sedikit supaya aman 1 halaman */
-      #po-print { font-size: 11px !important; }
-      #po-print h2 { font-size: 16px !important; }
-      #po-print .text-xl { font-size: 16px !important; }
-      #po-print .text-2xl { font-size: 18px !important; }
-
-      /* Tabel stabil & anti pecah */
-      #po-print table { table-layout: fixed; width: 100%; border-collapse: collapse; }
-      #po-print th, #po-print td { padding: 3px 6px !important; }
-      #po-print table, #po-print thead, #po-print tbody, #po-print tr, #po-print th, #po-print td, #po-print img {
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-    }
-  `}</style>
-);
-
-
-  // === Aktifkan tombol Sheets (ubah sesuai kebutuhan) ===
-  const hasSheets = true;
-
-  // === State utama ===
+  // === STATE UTAMA ===
   const [poType, setPoType] = useState("Prekursor");
   const [spAuto, setSpAuto] = useState(true);
   const [showMeta, setShowMeta] = useState(false);
@@ -163,7 +160,7 @@ export default function App() {
     Array<{ nama: string; zatAktif?: string; bentukKekuatan: string; satuan: string; jumlah: string; ket: string }>
   >([{ nama: "", zatAktif: "", bentukKekuatan: "", satuan: "", jumlah: "", ket: "" }]);
 
-  // === Nomor SP Otomatis ===
+  // === NOMOR SP ===
   function typeCode(t: string) {
     const s = String(t || "").toLowerCase();
     if (s.indexOf("pre") === 0) return "PRE";
@@ -182,7 +179,7 @@ export default function App() {
     const yyyy = dd.getFullYear();
     const nnn = String(seq || 1).padStart(3, "0");
     return `${nnn}/SP/${typeCode(poType)}/${mm}/${yyyy}`;
-    }
+  }
   function getSpKey(d?: Date) {
     const dd = d || new Date();
     const y = dd.getFullYear();
@@ -200,7 +197,7 @@ export default function App() {
   useEffect(() => {
     if (spAuto) {
       const seq = readSeq();
-      setHeader(h => ({ ...h, nomorSP: makeSpNumber(seq) }));
+      setHeader((h) => ({ ...h, nomorSP: makeSpNumber(seq) }));
     }
   }, [spAuto, poType]);
   function incrementSp() {
@@ -208,17 +205,17 @@ export default function App() {
     const cur = readSeq(now);
     const next = cur + 1;
     writeSeq(next, now);
-    setHeader(h => ({ ...h, nomorSP: makeSpNumber(next, now) }));
+    setHeader((h) => ({ ...h, nomorSP: makeSpNumber(next, now) }));
   }
   function decrementSp() {
     const now = new Date();
     const cur = readSeq(now);
     const next = Math.max(1, cur - 1);
     writeSeq(next, now);
-    setHeader(h => ({ ...h, nomorSP: makeSpNumber(next, now) }));
+    setHeader((h) => ({ ...h, nomorSP: makeSpNumber(next, now) }));
   }
 
-  // === ZAT AKTIF list (localStorage) ===
+  // === ZAT AKTIF default + localStorage ===
   const DEFAULT_PREKURSOR = [
     "Pseudoefedrin","Efedrin","Norefedrin","Ergometrin","Ergotamin","Anhidrida Asetat","Kalium Permanganat","Phenylpropanolamine HCl"
   ];
@@ -258,42 +255,50 @@ export default function App() {
   function deletePbfTemplate(i:number){ setPbfTemplates(prev => prev.filter((_, idx) => idx !== i)); }
   function renamePbfTemplate(i:number, field:string, val:string){ setPbfTemplates(prev => { const c = prev.slice(); if(!c[i]) return prev; c[i] = Object.assign({}, c[i], { [field]: val }); return c; }); }
 
-  // ===== Nomor SP Unik (lokal + optional remote) =====
-  const [spRemoteStatus, setSpRemoteStatus] = useState('');
+  // ===== Status unik nomor lokal =====
+  const [spRemoteStatus] = useState(''); // disiapkan bila nanti cek remote
   function loadUsedSpLocal(){ try { const v = JSON.parse(localStorage.getItem('sp-used-local') || '[]'); return Array.isArray(v) ? new Set(v) : new Set(); } catch { return new Set(); } }
   function saveUsedSpLocal(setv:Set<string>){ try { localStorage.setItem('sp-used-local', JSON.stringify(Array.from(setv))); } catch {} }
   const usedLocalSet = useMemo(() => loadUsedSpLocal(), [header.nomorSP]);
   const isSpUsedLocal = usedLocalSet.has(header.nomorSP || '');
   function markSpUsedLocal(num?:string){ const s = loadUsedSpLocal(); if(num) { s.add(num); saveUsedSpLocal(s); } }
-  async function checkSpUniqueRemote(num?:string){ if(!hasSheets) { setSpRemoteStatus(''); return true; } try { setSpRemoteStatus('Memeriksa...'); const res = await fetch('/.netlify/functions/sheets-check-unique?num=' + encodeURIComponent(num || '')); const data = await res.json(); const dup = !!data.duplicate; setSpRemoteStatus(dup ? 'Duplikat di Sheets' : 'Unik di Sheets'); return !dup; } catch(e:any){ setSpRemoteStatus('Gagal cek: ' + (e.message || String(e))); return true; } }
 
-  // Items
-  function addRow(){ setItems(prev => prev.concat([{ nama: "", zatAktif: "", bentukKekuatan: "", satuan: "", jumlah: "", ket: "" }])); }
-  function delRow(idx:number){ setItems(prev => prev.filter((_,i)=> i!==idx)); }
-  function handleItemChange(idx:number, key:string, value:any){ setItems(prev => prev.map((it,i)=> i===idx ? Object.assign({}, it, { [key]: value }) : it)); }
-  const showZatAktif = poType !== "Reguler";
-
-  // Google Sheets (Netlify Functions)
+  // ===== Google Sheets (placeholder agar tak error jika belum disetup) =====
   const [netStatus, setNetStatus] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyRows, setHistoryRows] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
   function assemblePayload(){ return { poType, header, pemesan, pbf, kebutuhan, tanggalTempat, items, savedAt: new Date().toISOString() }; }
-  async function saveToGoogleSheets(){ try { setNetStatus("Menyimpan..."); const res = await fetch("/.netlify/functions/sheets-append", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ payload: assemblePayload() }) }); const data = await res.json(); if (data && data.error) throw new Error(data.error.message||"Gagal menyimpan"); setNetStatus("Tersimpan ke Google Sheets ✔"); setTimeout(()=> setNetStatus(""), 2500); } catch(e:any){ console.error(e); setNetStatus("Gagal menyimpan: "+ (e.message||e.toString())); } }
-  async function loadHistory(){ try { setHistoryLoading(true); setHistoryError(""); const res = await fetch("/.netlify/functions/sheets-history"); const data = await res.json(); if (data && data.error) throw new Error(data.error.message||"Gagal memuat"); const rows = (data.rows || []) as any[]; setHistoryRows(rows); } catch(e:any){ console.error(e); setHistoryError(e.message||String(e)); } finally { setHistoryLoading(false); } }
-  function restoreFromRow(row:any){ try { if (row && row.json) { const parsed = JSON.parse(row.json); if (parsed.poType) setPoType(parsed.poType); if (parsed.header) setHeader(parsed.header); if (parsed.pemesan) setPemesan(parsed.pemesan); if (parsed.pbf) setPbf(parsed.pbf); if (parsed.kebutuhan) setKebutuhan(parsed.kebutuhan); if (parsed.tanggalTempat) setTanggalTempat(parsed.tanggalTempat); if (parsed.items && parsed.items.length) setItems(parsed.items); setHistoryOpen(false); } else { alert("Baris ini tidak memiliki data JSON utuh untuk di-restore."); } } catch(e:any){ console.error(e); alert("Gagal memulihkan data: "+(e.message||e.toString())); } }
+  async function saveToGoogleSheets(){
+    if (!hasSheets) { setNetStatus("Aktifkan integrasi Google Sheets dulu."); setTimeout(()=>setNetStatus(""), 2000); return; }
+    try { setNetStatus("Menyimpan..."); /* panggil API kamu di sini */ setNetStatus("Tersimpan ke Google Sheets ✔"); setTimeout(()=> setNetStatus(""), 2500); }
+    catch(e:any){ setNetStatus("Gagal menyimpan: "+(e.message||String(e))); }
+  }
+  async function loadHistory(){
+    if (!hasSheets) { setHistoryError("Integrasi Sheets belum diaktifkan."); return; }
+    try { setHistoryLoading(true); setHistoryError(""); /* fetch history */ setHistoryRows([]); }
+    catch(e:any){ setHistoryError(e.message||String(e)); }
+    finally { setHistoryLoading(false); }
+  }
+  function restoreFromRow(row:any){ try { if (row && row.json) { const parsed = JSON.parse(row.json); if (parsed.poType) setPoType(parsed.poType); if (parsed.header) setHeader(parsed.header); if (parsed.pemesan) setPemesan(parsed.pemesan); if (parsed.pbf) setPbf(parsed.pbf); if (parsed.kebutuhan) setKebutuhan(parsed.kebutuhan); if (parsed.tanggalTempat) setTanggalTempat(parsed.tanggalTempat); if (parsed.items && parsed.items.length) setItems(parsed.items); setHistoryOpen(false); } else { alert("Baris ini tidak memiliki data JSON utuh untuk di-restore."); } } catch(e:any){ alert("Gagal memulihkan data: "+(e.message||String(e))); } }
 
-  /** ==== CETAK: tandai leluhur #po-print sebagai .po-keep lalu print ==== */
- 
- const printDoc = () => {
-  markSpUsedLocal(header.nomorSP); // kalau Anda pakai tracking nomor
-  window.print();
-};
+  /** ==== CETAK ==== */
+  const printDoc = () => {
+    markSpUsedLocal(header.nomorSP);
+    window.print();
+  };
 
- 
- 
-  // ====== STATE MODAL ZAT AKTIF (FIX YANG TADI HILANG) ======
+  function newPO(){
+    setPbf({ nama: "", alamat: "", telp: "" });
+    setItems([{ nama: "", zatAktif: "", bentukKekuatan: "", satuan: "", jumlah: "", ket: "" }]);
+    if (spAuto) incrementSp();
+  }
+
+  const line = useMemo(() => <div className="w-full h-px bg-gray-400 my-2" />, []);
+  function formatJumlah(val:any){ const n=parseInt(val,10); if(!isFinite(n)) return val||""; return String(n); }
+
+  // ===== Modal Zat Aktif (state yang sempat terlewat) =====
   const [zOpen, setZOpen] = useState(false);
 
   return (
@@ -306,7 +311,6 @@ export default function App() {
         <div className="ml-auto flex gap-2">
           <button onClick={newPO} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">PO Baru</button>
           <button onClick={addRow} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Tambah Baris</button>
-          <button onClick={()=> setFavOpen(true)} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Favorit</button>
           <button onClick={()=> setZOpen(true)} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Kelola Zat Aktif</button>
           <button onClick={()=> { setHistoryOpen(true); loadHistory(); }} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Riwayat</button>
           {hasSheets && (
@@ -334,34 +338,48 @@ export default function App() {
           </Card>
 
           {showMeta && (
-            <Card title="Identitas Fasilitas Kesehatan">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input label="Judul Dokumen" value={header.judul} onChange={(v)=> setHeader(h=> ({...h, judul:v}))} />
-                <Input label="Nama Faskes" value={header.namaFaskes} onChange={(v)=> setHeader(h=> ({...h, namaFaskes:v}))} />
-                <Input label="Izin" value={header.izin} onChange={(v)=> setHeader(h=> ({...h, izin:v}))} />
-                <Input label="Telp" value={header.telp} onChange={(v)=> setHeader(h=> ({...h, telp:v}))} />
-                <Input label="Alamat" className="md:col-span-2" value={header.alamat} onChange={(v)=> setHeader(h=> ({...h, alamat:v}))} />
-                <Input label="Logo URL (opsional)" className="md:col-span-2" value={header.logoUrl} onChange={(v)=> setHeader(h=> ({...h, logoUrl:v}))} />
-                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                  <Input label="Nomor SP" value={header.nomorSP} onChange={(v)=> setHeader(h=> ({...h, nomorSP:v}))} />
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={spAuto} onChange={(e)=> setSpAuto((e.target as HTMLInputElement).checked)} />
-                    Nomor SP otomatis (per jenis)
-                  </label>
-                  <div className="flex gap-2">
-                    <button onClick={decrementSp} className="px-3 py-2 rounded-xl border text-sm">Turunkan Nomor SP</button>
-                    <button onClick={incrementSp} className="px-3 py-2 rounded-xl border text-sm">Naikkan Nomor SP</button>
+            <>
+              <Card title="Identitas Fasilitas Kesehatan">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Input label="Judul Dokumen" value={header.judul} onChange={(v)=> setHeader(h=> ({...h, judul:v}))} />
+                  <Input label="Nama Faskes" value={header.namaFaskes} onChange={(v)=> setHeader(h=> ({...h, namaFaskes:v}))} />
+                  <Input label="Izin" value={header.izin} onChange={(v)=> setHeader(h=> ({...h, izin:v}))} />
+                  <Input label="Telp" value={header.telp} onChange={(v)=> setHeader(h=> ({...h, telp:v}))} />
+                  <Input label="Alamat" className="md:col-span-2" value={header.alamat} onChange={(v)=> setHeader(h=> ({...h, alamat:v}))} />
+                  <Input label="Logo URL (opsional)" className="md:col-span-2" value={header.logoUrl} onChange={(v)=> setHeader(h=> ({...h, logoUrl:v}))} />
+                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                    <Input label="Nomor SP" value={header.nomorSP} onChange={(v)=> setHeader(h=> ({...h, nomorSP:v}))} />
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={spAuto} onChange={(e)=> setSpAuto((e.target as HTMLInputElement).checked)} />
+                      Nomor SP otomatis (per jenis)
+                    </label>
+                    <div className="flex gap-2">
+                      <button onClick={decrementSp} className="px-3 py-2 rounded-xl border text-sm">Turunkan Nomor SP</button>
+                      <button onClick={incrementSp} className="px-3 py-2 rounded-xl border text-sm">Naikkan Nomor SP</button>
+                    </div>
+                  </div>
+                  <div className="md:col-span-2 text-xs text-gray-700 mt-1">
+                    Status lokal: {isSpUsedLocal ? <span className="text-red-600">Duplikat</span> : <span className="text-green-700">Unik</span>}
+                    {hasSheets && (<span> · <em>{spRemoteStatus}</em></span>)}
                   </div>
                 </div>
-                <div className="md:col-span-2 text-xs text-gray-700 mt-1">
-                  Status lokal: {isSpUsedLocal ? <span className="text-red-600">Duplikat</span> : <span className="text-green-700">Unik</span>}
-                  {hasSheets && (<>
-                    {' · '}<button onClick={()=> checkSpUniqueRemote(header.nomorSP)} className="underline">Cek unik ke Sheets</button>
-                    {spRemoteStatus && <> — {spRemoteStatus}</>}
-                  </>)}
+              </Card>
+
+              <Card title="Kebutuhan Faskes">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Input label="Nama Klinik" value={kebutuhan.namaKlinik} onChange={(v)=> setKebutuhan(k=> ({...k, namaKlinik:v}))} />
+                  <Input label="No. Izin" value={kebutuhan.noIzin} onChange={(v)=> setKebutuhan(k=> ({...k, noIzin:v}))} />
+                  <Input label="Alamat" className="md:col-span-2" value={kebutuhan.alamat} onChange={(v)=> setKebutuhan(k=> ({...k, alamat:v}))} />
                 </div>
-              </div>
-            </Card>
+              </Card>
+
+              <Card title="Tempat & Tanggal">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Input label="Tempat" value={tanggalTempat.tempat} onChange={(v)=> setTanggalTempat(t=> ({...t, tempat:v}))} />
+                  <Input label="Tanggal" value={tanggalTempat.tanggal} onChange={(v)=> setTanggalTempat(t=> ({...t, tanggal:v}))} />
+                </div>
+              </Card>
+            </>
           )}
 
           <Card title="Mengajukan pesanan obat kepada">
@@ -397,7 +415,7 @@ export default function App() {
                   <div className="col-span-12 md:col-span-4">
                     <Input label={`Nama Obat #${idx+1}`} placeholder="Nama Obat" value={it.nama} onChange={(v)=> handleItemChange(idx, 'nama', v)} />
                   </div>
-                  {showZatAktif && (
+                  {poType !== "Reguler" && (
                     <div className="col-span-6 md:col-span-2">
                       <Select label="Zat Aktif" value={it.zatAktif || ''} onChange={(v)=> handleItemChange(idx, 'zatAktif', v)} options={zatOptions} />
                     </div>
@@ -481,7 +499,7 @@ export default function App() {
                   <tr className="bg-gray-100">
                     <th className="p-2 border border-black w-10">No</th>
                     <th className="p-2 border border-black">Nama Obat</th>
-                    {showZatAktif && <th className="p-2 border border-black">Zat Aktif</th>}
+                    {poType !== "Reguler" && <th className="p-2 border border-black">Zat Aktif</th>}
                     <th className="p-2 border border-black">Bentuk dan Kekuatan</th>
                     <th className="p-2 border border-black">Satuan</th>
                     <th className="p-2 border border-black">Jumlah</th>
@@ -493,7 +511,7 @@ export default function App() {
                     <tr key={i}>
                       <td className="p-2 border border-black text-center">{i + 1}</td>
                       <td className="p-2 border border-black text-left">{it.nama || ''}</td>
-                      {showZatAktif && <td className="p-2 border border-black text-left">{it.zatAktif || ''}</td>}
+                      {poType !== "Reguler" && <td className="p-2 border border-black text-left">{it.zatAktif || ''}</td>}
                       <td className="p-2 border border-black text-left">{it.bentukKekuatan || ''}</td>
                       <td className="p-2 border border-black text-center">{it.satuan || ''}</td>
                       <td className="p-2 border border-black text-center">{formatJumlah(it.jumlah)}</td>
@@ -533,37 +551,8 @@ export default function App() {
         </section>
       </div>
 
-      {/* ===== Modal/Panel Favorit, Zat Aktif, Template PBF, Riwayat ===== */}
-      {/* Favorit */}
-      {favOpen && (
-        <div className="fixed inset-0 z-40">
-          <div className="absolute inset-0 bg-black/30" onClick={()=> setFavOpen(false)} />
-          <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-4 overflow-y-auto">
-            <div className="flex items-center gap-2 mb-3">
-              <h3 className="text-lg font-semibold">Favorit Item</h3>
-              <div className="ml-auto"><button onClick={()=> setFavOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button></div>
-            </div>
-            {favorites.length===0 ? (
-              <p className="text-sm text-gray-600">Belum ada favorit. Gunakan tombol <b>Simpan ke Favorit</b> pada baris item.</p>
-            ) : (
-              <div className="space-y-2">
-                {favorites.map((f,i)=> (
-                  <div key={i} className="border rounded-xl p-3 text-sm flex items-center gap-2">
-                    <div className="flex-1">
-                      <div className="font-medium">{f.nama}</div>
-                      <div className="text-xs text-gray-600">{f.zatAktif ? ('Zat aktif: '+f.zatAktif+' · ') : ''}{f.bentukKekuatan} · {f.satuan} · Jml: {String(f.jumlah||'')}</div>
-                    </div>
-                    <button onClick={()=> addFromFavorite(i)} className="px-2 py-1 border rounded-lg text-xs">Tambah ke Item</button>
-                    <button onClick={()=> deleteFavorite(i)} className="px-2 py-1 border rounded-lg text-xs">Hapus</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Kelola Zat Aktif */}
+      {/* ===== Modal ===== */}
+      {/* Zat Aktif */}
       {zOpen && (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/30" onClick={()=> setZOpen(false)} />
@@ -574,7 +563,7 @@ export default function App() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h4 className="font-medium mb-2">Prekursor (Tambah/Ubah)</h4>
+                <h4 className="font-medium mb-2">Prekursor (Ubah/Atur)</h4>
                 <div className="space-y-2">
                   {preList.length === 0 && <div className="text-xs text-gray-500">Belum ada item.</div>}
                   {preList.map((v,i)=> (
@@ -586,7 +575,7 @@ export default function App() {
                 </div>
               </div>
               <div>
-                <h4 className="font-medium mb-2">Obat-obat Tertentu (Tambah/Ubah)</h4>
+                <h4 className="font-medium mb-2">Obat-obat Tertentu (Ubah/Atur)</h4>
                 <div className="space-y-2">
                   {ootList.length === 0 && <div className="text-xs text-gray-500">Belum ada item.</div>}
                   {ootList.map((v,i)=> (
@@ -603,7 +592,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Kelola Template PBF */}
+      {/* Template PBF */}
       {pbfOpen && (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/30" onClick={()=> setPbfOpen(false)} />
@@ -630,7 +619,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Riwayat (Sheets) */}
+      {/* Riwayat */}
       {historyOpen && (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/30" onClick={()=> setHistoryOpen(false)} />
