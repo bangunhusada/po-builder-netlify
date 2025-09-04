@@ -326,7 +326,7 @@ export default function App() {
       {PrintCSS}
       {/* Toolbar (tidak dicetak) */}
       <div className="no-print sticky top-0 z-10 border-b bg-white/80 backdrop-blur px-4 py-3 flex items-center gap-2">
-        <h1 className="text-lg font-semibold">Purchase Order – Builder (Lengkap)</h1>
+        <h1 className="text-lg font-semibold">Purchase Order – Bangun Husada</h1>
         <div className="ml-auto flex gap-2">
           <button onClick={newPO} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">PO Baru</button>
           <button onClick={addRow} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Tambah Baris</button>
