@@ -53,36 +53,56 @@ function Select({ label, value, onChange, options, className = "" }: any) {
 
 /** ============== APP (DEFAULT EXPORT) ============== */
 export default function App() {
-  // Print CSS A4: hanya panel #po-print yang tercetak
+  // Print CSS A4: hanya panel #po-print yang tercetak & muat 1 halaman
   const PrintCSS = (
     <style>{`
-      @page { size: A4 portrait; margin: 12mm; }
-      @media print {
-        /* Sembunyikan SEMUA elemen saat print */
-        body * { visibility: hidden !important; }
+      /* A4: 210mm x 297mm */
+      @page { size: A4 portrait; margin: 10mm; }
 
-        /* Tampilkan hanya area surat pesanan */
-        #po-print, #po-print * {
-          visibility: visible !important;
+      @media print {
+        /* Sembunyikan semua di luar area PO */
+        body * { visibility: hidden !important; }
+        #po-print, #po-print * { visibility: visible !important; }
+
+        /* Reset global */
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          height: auto !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
 
-        /* Pastikan posisi & ukuran pas */
+        /* Kunci lebar konten agar tidak tumpah ke halaman 2 */
+        /* 210mm - 20mm = 190mm; beri buffer -> 186mm */
         #po-print {
-          position: absolute !important;
-          left: 0 !important;
-          top: 0 !important;
-          width: 100% !important;
+          position: static !important;
+          width: 186mm !important;
+          margin: 0 auto !important;
           box-shadow: none !important;
+          border-radius: 0 !important;
           padding: 0 !important;
         }
 
-        /* Hindari patah halaman */
+        /* Kencangkan padding internal container (tailwind p-6) */
+        #po-print .p-6 { padding: 8mm !important; }
+
+        /* Perkecil tipografi saat print */
+        #po-print { font-size: 11px !important; }
+        #po-print h2 { font-size: 16px !important; }
+        #po-print .text-xl { font-size: 16px !important; }
+        #po-print .text-2xl { font-size: 18px !important; }
+
+        /* Tabel lebih padat & stabil */
+        #po-print table { table-layout: fixed; width: 100%; border-collapse: collapse; }
+        #po-print th, #po-print td { padding: 3px 6px !important; }
+        #po-print th { font-weight: 600; }
+
+        /* Hindari patah di elemen penting */
         #po-print, table, thead, tbody, tr, th, td, img {
           break-inside: avoid;
           page-break-inside: avoid;
         }
-
-        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       }
     `}</style>
   );
@@ -102,7 +122,7 @@ export default function App() {
     telp: "Telp : (0274) 488314",
     judul: "SURAT PESANAN",
     nomorSP: "",
-    logoUrl: "" // opsional URL logo
+    logoUrl: "https://iili.io/KBiv0xa.png" // opsional URL logo
   });
 
   const [pemesan, setPemesan] = useState({
