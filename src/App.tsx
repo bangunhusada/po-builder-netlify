@@ -411,7 +411,7 @@ export default function App() {
                   className="md:col-span-2"
                   value={header.ttdUrl}
                   onChange={(v:string)=> setHeader(h=> ({...h, ttdUrl:v}))}
-                  placeholder="https://.../tanda-tangan.png atau data:image/png;base64,..."
+                  placeholder="https://iili.io/KBb62lS.png"
                 />
                 <Input
                   label="Tinggi maksimal TTD (mm)"
