@@ -69,53 +69,58 @@ function Select(props: {
 /** ============== APP (DEFAULT EXPORT) ============== */
 export default function App() {
   /** ==== PRINT CSS (PO SAJA, 1 HALAMAN) ==== */
+  
   const PrintCSS = (
-    <style>{`
-      /* A4 */
-      @page { size: A4 portrait; margin: 10mm; }
+  <style>{`
+    /* Kertas A4 */
+    @page { size: A4 portrait; margin: 10mm; }
 
-      @media print {
-        html, body {
-          background: #fff !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-        .bg-gray-50 { background: #fff !important; }
-
-        /* Saat <html> diberi class printing-po, SEMUA elemen selain .po-keep & turunannya disembunyikan. */
-        html.printing-po body *:not(.po-keep):not(.po-keep *) {
-          display: none !important;
-        }
-
-        /* Area PO pas dengan margin A4 (10mm kiri-kanan) */
-        #po-print {
-          width: 186mm !important;     /* 210 - 2*10 */
-          margin: 0 auto !important;
-          box-shadow: none !important;
-          border-radius: 0 !important;
-          padding: 0 !important;
-          page-break-before: auto !important;
-          page-break-after: avoid !important;
-        }
-        /* Ganti padding container (tailwind p-6) saat print */
-        #po-print .p-6 { padding: 8mm !important; }
-
-        /* Font & tabel dipadatkan */
-        #po-print { font-size: 11px !important; }
-        #po-print h2 { font-size: 16px !important; }
-        #po-print .text-xl { font-size: 16px !important; }
-        #po-print .text-2xl { font-size: 18px !important; }
-
-        #po-print table { table-layout: fixed; width: 100%; border-collapse: collapse; }
-        #po-print th, #po-print td { padding: 3px 6px !important; }
-        #po-print table, #po-print thead, #po-print tbody, #po-print tr, #po-print th, #po-print td, #po-print img {
-          break-inside: avoid; page-break-inside: avoid;
-        }
+    @media print {
+      html, body {
+        background: #fff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
-    `}</style>
-  );
+
+      /* SEMUA elemen disembunyikan */
+      body * { visibility: hidden !important; }
+
+      /* HANYA #po-print yang kelihatan */
+      #po-print, #po-print * { visibility: visible !important; }
+
+      /* Letakkan PO fixed di halaman, sehingga elemen lain (yang hidden) TIDAK memengaruhi pagination */
+      #po-print {
+        position: fixed !important;       /* kunci di halaman */
+        inset: 0 !important;              /* top/right/bottom/left: 0 */
+        width: 186mm !important;          /* pas A4 margin 10mm kiri-kanan */
+        height: auto !important;
+        margin: auto !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+      }
+
+      /* Ganti padding kontainer saat print */
+      #po-print .p-6 { padding: 8mm !important; }
+
+      /* Padatkan sedikit supaya aman 1 halaman */
+      #po-print { font-size: 11px !important; }
+      #po-print h2 { font-size: 16px !important; }
+      #po-print .text-xl { font-size: 16px !important; }
+      #po-print .text-2xl { font-size: 18px !important; }
+
+      /* Tabel stabil & anti pecah */
+      #po-print table { table-layout: fixed; width: 100%; border-collapse: collapse; }
+      #po-print th, #po-print td { padding: 3px 6px !important; }
+      #po-print table, #po-print thead, #po-print tbody, #po-print tr, #po-print th, #po-print td, #po-print img {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+    }
+  `}</style>
+);
+
 
   // === Aktifkan tombol Sheets (ubah sesuai kebutuhan) ===
   const hasSheets = true;
@@ -280,41 +285,14 @@ export default function App() {
   function restoreFromRow(row:any){ try { if (row && row.json) { const parsed = JSON.parse(row.json); if (parsed.poType) setPoType(parsed.poType); if (parsed.header) setHeader(parsed.header); if (parsed.pemesan) setPemesan(parsed.pemesan); if (parsed.pbf) setPbf(parsed.pbf); if (parsed.kebutuhan) setKebutuhan(parsed.kebutuhan); if (parsed.tanggalTempat) setTanggalTempat(parsed.tanggalTempat); if (parsed.items && parsed.items.length) setItems(parsed.items); setHistoryOpen(false); } else { alert("Baris ini tidak memiliki data JSON utuh untuk di-restore."); } } catch(e:any){ console.error(e); alert("Gagal memulihkan data: "+(e.message||e.toString())); } }
 
   /** ==== CETAK: tandai leluhur #po-print sebagai .po-keep lalu print ==== */
-  const printDoc = () => {
-    markSpUsedLocal(header.nomorSP);
+ 
+ const printDoc = () => {
+  markSpUsedLocal(header.nomorSP); // kalau Anda pakai tracking nomor
+  window.print();
+};
 
-    document.documentElement.classList.add('printing-po');
-
-    // tandai #po-print + semua leluhurnya .po-keep
-    const po = document.getElementById('po-print');
-    const kept: Element[] = [];
-    let n: Element | null = po;
-    while (n) {
-      n.classList.add('po-keep');
-      kept.push(n);
-      if (n === document.body) break;
-      n = n.parentElement;
-    }
-
-    window.print();
-
-    const cleanup = () => {
-      document.documentElement.classList.remove('printing-po');
-      kept.forEach(el => el.classList.remove('po-keep'));
-      window.removeEventListener('afterprint', cleanup);
-    };
-    window.addEventListener('afterprint', cleanup);
-  };
-
-  function newPO(){
-    setPbf({ nama: "", alamat: "", telp: "" });
-    setItems([{ nama: "", zatAktif: "", bentukKekuatan: "", satuan: "", jumlah: "", ket: "" }]);
-    if (spAuto) incrementSp();
-  }
-
-  const line = useMemo(() => <div className="w-full h-px bg-gray-400 my-2" />, []);
-  function formatJumlah(val:any){ const n=parseInt(val,10); if(!isFinite(n)) return val||""; return String(n); }
-
+ 
+ 
   // ====== STATE MODAL ZAT AKTIF (FIX YANG TADI HILANG) ======
   const [zOpen, setZOpen] = useState(false);
 
