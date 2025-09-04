@@ -57,11 +57,11 @@ export default function App() {
  
 const PrintCSS = (
   <style>{`
-    /* Kunci A4, tanpa margin browser */
-    @page { size: A4 portrait; margin: 0; }
+    /* A4 normal, biar dialog print tetap A4 */
+    @page { size: A4 portrait; margin: 10mm; }
 
     @media print {
-      /* Putihkan latar & rapikan */
+      /* Putihkan latar */
       html, body {
         background: #fff !important;
         margin: 0 !important;
@@ -71,38 +71,34 @@ const PrintCSS = (
       }
       .bg-gray-50 { background: #fff !important; }
 
-      /* --- INI KUNCI: sembunyikan SEMUA elemen yang bukan #po-print atau keturunannya --- */
-      body *:not(#po-print):not(#po-print *) {
+      /* SEMBUNYIKAN semua elemen yang BUKAN #po-print dan TIDAK mengandung #po-print */
+      /* Ini tidak akan menyembunyikan ancestor dari #po-print */
+      body *:not(#po-print):not(:has(#po-print)) {
         display: none !important;
       }
 
-      /* Area yang dicetak */
+      /* Area Surat Pesanan */
       #po-print {
-        position: relative !important;
-        width: 210mm !important;
-        height: 297mm !important;     /* full A4 */
-        padding: 12mm !important;     /* margin dokumen di dalam halaman */
-        box-sizing: border-box !important;
+        position: static !important;         /* jangan fixed/absolute agar tidak duplikat */
+        width: 190mm !important;             /* 210 - (2*10) = 190mm (pas dengan @page margin) */
         margin: 0 auto !important;
-
         box-shadow: none !important;
         border-radius: 0 !important;
-
-        /* Sedikit diskala supaya aman 1 halaman */
-        transform: scale(0.96) !important;
-        transform-origin: top left !important;
-
-        overflow: hidden !important;
+        padding: 0 !important;
         page-break-before: auto !important;
         page-break-after: avoid !important;
       }
 
-      /* Tipografi/tabel padat */
+      /* Gantikan padding tailwind p-6 jadi 8mm saat print */
+      #po-print .p-6 { padding: 8mm !important; }
+
+      /* Sedikit rapat supaya aman 1 halaman */
       #po-print { font-size: 11px !important; }
       #po-print h2 { font-size: 16px !important; }
       #po-print .text-xl { font-size: 16px !important; }
       #po-print .text-2xl { font-size: 18px !important; }
 
+      /* Tabel stabil */
       #po-print table { table-layout: fixed; width: 100%; border-collapse: collapse; }
       #po-print th, #po-print td { padding: 3px 6px !important; }
       #po-print th { font-weight: 600; }
@@ -115,6 +111,7 @@ const PrintCSS = (
     }
   `}</style>
 );
+
 
  
  
