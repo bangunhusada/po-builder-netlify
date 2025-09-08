@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* opsional: gaya cetak ringan */
 @media print {
   .no-print { display: none !important; }
 }
