@@ -1,0 +1,19 @@
+/* Minimal CSS supaya import tidak error.
+   Kalau kamu belum pakai Tailwind, ini sudah cukup. */
+
+/* Sembunyikan elemen bertanda .no-print saat cetak */
+@media print {
+  .no-print { display: none !important; }
+}
+
+/* Sedikit reset agar tampilan rapi */
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Opsional: batasi lebar konten utama */
+#root {
+  min-height: 100vh;
+  background: #f9fafb; /* abu-abu muda */
+}
