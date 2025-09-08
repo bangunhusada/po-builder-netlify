@@ -56,43 +56,43 @@ export default function App() {
   /** ====== PRINT CSS (A4, clone-only) ====== */
   const PrintCSS = (
     <style>{`
-    @page { size: A4 portrait; margin: 12mm; }
+      @page { size: A4 portrait; margin: 12mm; }
 
-    @media print {
-      /* Sembunyikan seluruh halaman, tapi biarkan layout tetap ada */
-      html, body { visibility: hidden !important; margin: 0 !important; padding: 0 !important; }
+      @media print {
+        /* Sembunyikan seluruh halaman, tapi biarkan layout tetap ada */
+        html, body { visibility: hidden !important; margin: 0 !important; padding: 0 !important; }
 
-      /* Tampilkan hanya #po-print */
-      #po-print, #po-print * { visibility: visible !important; }
+        /* Tampilkan hanya #po-print */
+        #po-print, #po-print * { visibility: visible !important; }
 
-      /* Letakkan di paling atas halaman cetak (bukan fixed agar tidak diulang) */
-      #po-print {
-        position: absolute !important;   /* <— bukan fixed */
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        margin: 0 auto !important;
-        width: 186mm !important;         /* lebar aman A4 (210 - 2×12mm) */
-        padding: 0 !important;
-        box-shadow: none !important;
-        background: #fff !important;
-        page-break-after: avoid !important;
+        /* Letakkan di paling atas halaman cetak (bukan fixed agar tidak diulang) */
+        #po-print {
+          position: absolute !important;   /* <— bukan fixed */
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          margin: 0 auto !important;
+          width: 186mm !important;         /* lebar aman A4 (210 - 2×12mm) */
+          padding: 0 !important;
+          box-shadow: none !important;
+          background: #fff !important;
+          page-break-after: avoid !important;
+        }
+
+        /* Rapikan tabel */
+        #po-print table { border-collapse: collapse !important; }
+        #po-print th, #po-print td { border: 1px solid #000 !important; }
+
+        /* Hindari pecah baris aneh */
+        #po-print, #po-print table, #po-print tr, #po-print img {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
+        /* Warna/garis tampil saat print */
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       }
-
-      /* Rapikan tabel */
-      #po-print table { border-collapse: collapse !important; }
-      #po-print th, #po-print td { border: 1px solid #000 !important; }
-
-      /* Hindari pecah baris aneh */
-      #po-print, #po-print table, #po-print tr, #po-print img {
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-
-      /* Warna/garis tampil saat print */
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
-  `}</style>
+    `}</style>
   );
 
   /** ====== FLAGS ====== */
@@ -116,7 +116,7 @@ export default function App() {
     ttdUrl: "https://iili.io/KBb62lS.png", // <- TTD Anda
     ttdHeightMm: 50,      // tinggi maksimal gambar (hanya memengaruhi gambar)
     ttdAreaHeightMm: 18,  // JARAK tetap antara 'Pemesan' dan nama (spacer)
-    ttdX: 171,            // posisi X (px)
+    ttdX: 171,            // posisi X (px) relatif ke kotak TTD
     ttdY: 37,             // posisi Y (px)
     ttdScale: 1           // skala (1 = 100%)
   } as any);
@@ -260,7 +260,20 @@ export default function App() {
   const usedLocalSet = useMemo(() => loadUsedSpLocal(), [header.nomorSP]);
   const isSpUsedLocal = usedLocalSet.has(header.nomorSP || '');
   function markSpUsedLocal(num?:string){ const s = loadUsedSpLocal(); if(num) { s.add(num); saveUsedSpLocal(s); } }
-  async function checkSpUniqueRemote(num?:string){ if(!hasSheets) { setSpRemoteStatus(''); return true; } try { setSpRemoteStatus('Memeriksa...'); const res = await fetch('/.netlify/functions/sheets-check-unique?num=' + encodeURIComponent(num || '')); const data = await res.json(); const dup = !!data.duplicate; setSpRemoteStatus(dup ? 'Duplikat di Sheets' : 'Unik di Sheets'); return !dup; } catch(e:any){ setSpRemoteStatus('Gagal cek: ' + (e.message || String(e))); return true; } }
+  async function checkSpUniqueRemote(num?:string){
+    if(!hasSheets) { setSpRemoteStatus(''); return true; }
+    try {
+      setSpRemoteStatus('Memeriksa...');
+      const res = await fetch('/.netlify/functions/sheets-check-unique?num=' + encodeURIComponent(num || ''));
+      const data = await res.json();
+      const dup = !!data.duplicate;
+      setSpRemoteStatus(dup ? 'Duplikat di Sheets' : 'Unik di Sheets');
+      return !dup;
+    } catch(e:any){
+      setSpRemoteStatus('Gagal cek: ' + (e.message || String(e)));
+      return true;
+    }
+  }
 
   /** ====== ITEMS ====== */
   function addRow(){ setItems(prev => prev.concat([{ nama: "", zatAktif: "", bentukKekuatan: "", satuan: "", jumlah: "", ket: "" }])); }
@@ -275,54 +288,55 @@ export default function App() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
   function assemblePayload(){ return { poType, header, pemesan, pbf, kebutuhan, tanggalTempat, items, savedAt: new Date().toISOString() }; }
-
-  // ===> UPDATED: auto-bump nomor SP jika duplikat (server) dan sinkron ke UI/localStorage
   async function saveToGoogleSheets(){
     try {
       setNetStatus("Menyimpan...");
-
       const res = await fetch("/.netlify/functions/sheets-append", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ payload: assemblePayload() })
       });
       const data = await res.json();
-
-      if (!res.ok || data?.error) {
-        throw new Error((data?.error && data.error.message) || "Gagal menyimpan");
-      }
-
-      // Nomor final yang dipakai server (bisa auto-bump)
-      const finalNum = data.nomorSPUsed || header.nomorSP;
-
-      // Update nomor di UI jika berubah
-      if (finalNum && finalNum !== header.nomorSP) {
-        setHeader((h:any) => ({ ...h, nomorSP: finalNum }));
-      }
-
-      // Sinkronkan sequence lokal untuk bulan/jenis sekarang
-      const m = String(finalNum || "").match(/^(\d{3})\/SP\/([A-Z]{3})\/(\d{2})\/(\d{4})$/);
-      if (m) {
-        const usedSeq = parseInt(m[1], 10);
-        try { localStorage.setItem(getSpKey(new Date()), String(usedSeq)); } catch {}
-      }
-
-      // Tandai used di local
-      markSpUsedLocal(finalNum);
-
-      setNetStatus(data.bumped
-        ? `Tersimpan ✔ (nomor otomatis dinaikkan ke ${finalNum})`
-        : "Tersimpan ke Google Sheets ✔");
-      setTimeout(()=> setNetStatus(""), 3000);
+      if (data && data.error) throw new Error(data.error.message||"Gagal menyimpan");
+      setNetStatus("Tersimpan ke Google Sheets ✔");
+      setTimeout(()=> setNetStatus(""), 2500);
     } catch(e:any){
       console.error(e);
-      alert("Gagal menyimpan: "+ (e.message||e.toString()));
       setNetStatus("Gagal menyimpan: "+ (e.message||e.toString()));
     }
   }
-
-  async function loadHistory(){ try { setHistoryLoading(true); setHistoryError(""); const res = await fetch("/.netlify/functions/sheets-history"); const data = await res.json(); if (data && data.error) throw new Error(data.error.message||"Gagal memuat"); const rows = (data.rows || []) as any[]; setHistoryRows(rows); } catch(e:any){ console.error(e); setHistoryError(e.message||String(e)); } finally { setHistoryLoading(false); } }
-  function restoreFromRow(row:any){ try { if (row && row.json) { const parsed = JSON.parse(row.json); if (parsed.poType) setPoType(parsed.poType); if (parsed.header) setHeader(parsed.header); if (parsed.pemesan) setPemesan(parsed.pemesan); if (parsed.pbf) setPbf(parsed.pbf); if (parsed.kebutuhan) setKebutuhan(parsed.kebutuhan); if (parsed.tanggalTempat) setTanggalTempat(parsed.tanggalTempat); if (parsed.items && parsed.items.length) setItems(parsed.items); setHistoryOpen(false); } else { alert("Baris ini tidak memiliki data JSON utuh untuk di-restore."); } } catch(e:any){ console.error(e); alert("Gagal memulihkan data: "+(e.message||e.toString())); } }
+  async function loadHistory(){
+    try {
+      setHistoryLoading(true); setHistoryError("");
+      const res = await fetch("/.netlify/functions/sheets-history");
+      const data = await res.json();
+      if (data && data.error) throw new Error(data.error.message||"Gagal memuat");
+      const rows = (data.rows || []) as any[];
+      setHistoryRows(rows);
+    } catch(e:any){
+      console.error(e); setHistoryError(e.message||String(e));
+    } finally { setHistoryLoading(false); }
+  }
+  function restoreFromRow(row:any){
+    try {
+      if (row && row.json) {
+        const parsed = JSON.parse(row.json);
+        if (parsed.poType) setPoType(parsed.poType);
+        if (parsed.header) setHeader(parsed.header);
+        if (parsed.pemesan) setPemesan(parsed.pemesan);
+        if (parsed.pbf) setPbf(parsed.pbf);
+        if (parsed.kebutuhan) setKebutuhan(parsed.kebutuhan);
+        if (parsed.tanggalTempat) setTanggalTempat(parsed.tanggalTempat);
+        if (parsed.items && parsed.items.length) setItems(parsed.items);
+        setHistoryOpen(false);
+      } else {
+        alert("Baris ini tidak memiliki data JSON utuh untuk di-restore.");
+      }
+    } catch(e:any){
+      console.error(e);
+      alert("Gagal memulihkan data: "+(e.message||e.toString()));
+    }
+  }
 
   /** ====== UTIL ====== */
   function terbilangID(num:any){ let n = Math.floor(Math.abs(Number(num) || 0)); if (n === 0) return "nol";
@@ -414,6 +428,54 @@ export default function App() {
             </div>
           </Card>
 
+          {/* === NOMOR SP (selalu tampil, di luar mode fokus) === */}
+          <Card title="Nomor SP">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+              <Input
+                label="Nomor SP"
+                value={header.nomorSP}
+                onChange={(v:string)=> setHeader((h:any)=> ({...h, nomorSP:v}))}
+              />
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={spAuto}
+                  onChange={(e)=> setSpAuto((e.target as HTMLInputElement).checked)}
+                />
+                Nomor SP otomatis (per jenis)
+              </label>
+
+              <div className="flex gap-2">
+                <button onClick={decrementSp} className="px-3 py-2 rounded-xl border text-sm">
+                  Turunkan Nomor SP
+                </button>
+                <button onClick={incrementSp} className="px-3 py-2 rounded-xl border text-sm">
+                  Naikkan Nomor SP
+                </button>
+              </div>
+            </div>
+
+            {/* Status – font dibesarkan 1 tingkat (text-sm) */}
+            <div className="text-sm text-gray-700 mt-2">
+              Status lokal: {isSpUsedLocal
+                ? <span className="text-red-600">Duplikat</span>
+                : <span className="text-green-700">Unik</span>}
+              {hasSheets && (
+                <>
+                  {" · "}
+                  <button
+                    onClick={()=> checkSpUniqueRemote(header.nomorSP)}
+                    className="underline"
+                  >
+                    Cek unik ke Sheets
+                  </button>
+                  {spRemoteStatus && <> — {spRemoteStatus}</>}
+                </>
+              )}
+            </div>
+          </Card>
+
           {showMeta && (
             <Card title="Identitas Fasilitas Kesehatan">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -441,27 +503,6 @@ export default function App() {
                     />
                     <div className="text-xs text-gray-600 mt-1">{Math.round((header.ttdScale ?? 1)*100)}%</div>
                   </label>
-                </div>
-
-                {/* Nomor SP */}
-                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                  <Input label="Nomor SP" value={header.nomorSP} onChange={(v:string)=> setHeader((h:any)=> ({...h, nomorSP:v}))} />
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={spAuto} onChange={(e)=> setSpAuto((e.target as HTMLInputElement).checked)} />
-                    Nomor SP otomatis (per jenis)
-                  </label>
-                  <div className="flex gap-2">
-                    <button onClick={decrementSp} className="px-3 py-2 rounded-xl border text-sm">Turunkan Nomor SP</button>
-                    <button onClick={incrementSp} className="px-3 py-2 rounded-xl border text-sm">Naikkan Nomor SP</button>
-                  </div>
-                </div>
-
-                <div className="md:col-span-2 text-xs text-gray-700 mt-1">
-                  Status lokal: {isSpUsedLocal ? <span className="text-red-600">Duplikat</span> : <span className="text-green-700">Unik</span>}
-                  {hasSheets && (<>
-                    {' · '}<button onClick={()=> checkSpUniqueRemote(header.nomorSP)} className="underline">Cek unik ke Sheets</button>
-                    {spRemoteStatus && <> — {spRemoteStatus}</>}
-                  </>)}
                 </div>
               </div>
             </Card>
