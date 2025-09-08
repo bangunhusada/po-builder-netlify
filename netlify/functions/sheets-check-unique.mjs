@@ -1,42 +1,30 @@
+// netlify/functions/sheets-check-unique.mjs
+import { getSheets } from "./_sheetsClient.mjs";
+
 const SHEET_ID = process.env.SHEET_ID;
-const API_KEY = process.env.API_KEY;
 const SHEET_TAB = process.env.SHEET_TAB || "Sheet1";
 
-function badEnv() {
-  const miss = [];
-  if (!SHEET_ID) miss.push("SHEET_ID");
-  if (!API_KEY) miss.push("API_KEY");
-  return miss;
-}
+const jsonRes = (code, body) => ({
+  statusCode: code,
+  headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+  body: JSON.stringify(body),
+});
 
-function jsonRes(statusCode, bodyObj) {
-  return {
-    statusCode,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*"
-    },
-    body: JSON.stringify(bodyObj)
-  };
-}
 export const handler = async (event) => {
-  const miss = badEnv();
-  if (miss.length) {
-    return jsonRes(500, { error: "Missing env: " + miss.join(", ") });
-  }
   try {
-    const params = new URLSearchParams(event.rawQuery || event.queryStringParameters || {});
-    const num = params.get ? params.get("num") : (event.queryStringParameters?.num || "");
+    const num = new URLSearchParams(event.queryStringParameters || {}).get("num") || "";
+    if (!num) return jsonRes(400, { error: "Missing ?num=" });
+    if (!SHEET_ID) return jsonRes(500, { error: "Missing env: SHEET_ID" });
 
-    const range = `${SHEET_TAB}!B:B`;
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(SHEET_ID)}/values/${encodeURIComponent(range)}?key=${encodeURIComponent(API_KEY)}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (!res.ok || data?.error) {
-      return jsonRes(res.status || 500, { error: data?.error?.message || "Sheets check failed", raw: data });
-    }
-    const values = (data?.values || []).flat();
-    const duplicate = !!(num && values.includes(num));
+    const sheets = await getSheets();
+    const { data } = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: `${SHEET_TAB}!A:A`,
+    });
+
+    const vals = (data.values || []).flat();
+    const duplicate = vals.includes(num);
+
     return jsonRes(200, { duplicate });
   } catch (e) {
     return jsonRes(500, { error: String(e?.message || e) });

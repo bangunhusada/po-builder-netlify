@@ -1,61 +1,50 @@
+// netlify/functions/sheets-append.mjs
+import { getSheets } from "./_sheetsClient.mjs";
+
 const SHEET_ID = process.env.SHEET_ID;
-const API_KEY = process.env.API_KEY;
 const SHEET_TAB = process.env.SHEET_TAB || "Sheet1";
 
-function badEnv() {
-  const miss = [];
-  if (!SHEET_ID) miss.push("SHEET_ID");
-  if (!API_KEY) miss.push("API_KEY");
-  return miss;
-}
+const jsonRes = (code, body) => ({
+  statusCode: code,
+  headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+  body: JSON.stringify(body),
+});
 
-function jsonRes(statusCode, bodyObj) {
-  return {
-    statusCode,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*"
-    },
-    body: JSON.stringify(bodyObj)
-  };
-}
 export const handler = async (event) => {
-  if (event.httpMethod !== "POST") {
-    return jsonRes(405, { error: "Method Not Allowed" });
-  }
-  const miss = badEnv();
-  if (miss.length) {
-    return jsonRes(500, { error: "Missing env: " + miss.join(", ") });
-  }
   try {
+    if (event.httpMethod !== "POST") {
+      return jsonRes(405, { error: "Method not allowed" });
+    }
+    if (!SHEET_ID) return jsonRes(500, { error: "Missing env: SHEET_ID" });
+
     const { payload } = JSON.parse(event.body || "{}");
     if (!payload) return jsonRes(400, { error: "Missing payload" });
 
-    const items = Array.isArray(payload.items) ? payload.items : [];
-    const ringkasanObat = items
-      .map(it => (it?.nama || "") + (it?.zatAktif ? ` (${it.zatAktif})` : "") + (it?.jumlah ? ` x${it.jumlah}` : ""))
-      .join("; ");
+    const sheets = await getSheets();
 
-    const range = `${SHEET_TAB}!A1`;
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(SHEET_ID)}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&key=${encodeURIComponent(API_KEY)}`;
+    // Contoh mapping → samakan dengan format yang kamu mau
+    const now = new Date().toISOString();
+    const ringkasan = (payload.items || [])
+      .map((x, i) => `${i + 1}. ${x.nama || ""} ${x.jumlah ? `(${x.jumlah})` : ""}`)
+      .join(" | ");
+
     const values = [[
-      payload?.tanggalTempat?.tanggal || "",
-      payload?.header?.nomorSP || "",
-      payload?.kebutuhan?.namaKlinik || "",
-      payload?.pemesan?.nama || "",
-      payload?.poType || "",
-      ringkasanObat,
-      JSON.stringify(payload)
+      payload.header?.nomorSP || "",
+      payload.poType || "",
+      payload.pbf?.nama || "",
+      now,
+      ringkasan,
+      JSON.stringify(payload), // simpan JSON lengkap untuk "Pulihkan"
     ]];
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ values })
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: `${SHEET_TAB}!A1`,
+      valueInputOption: "RAW",
+      insertDataOption: "INSERT_ROWS",
+      requestBody: { values },
     });
-    const data = await res.json();
-    if (!res.ok || data?.error) {
-      return jsonRes(res.status || 500, { error: data?.error?.message || "Sheets append failed", raw: data });
-    }
+
     return jsonRes(200, { ok: true });
   } catch (e) {
     return jsonRes(500, { error: String(e?.message || e) });
