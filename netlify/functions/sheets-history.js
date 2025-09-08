@@ -4,8 +4,9 @@ exports.handler = async () => {
   try {
     const SHEET_ID = process.env.SHEET_ID;
     const SHEET_TAB = process.env.SHEET_TAB || "Sheet1";
-    const sheets = getSheets();
+    if (!SHEET_ID) throw new Error("Missing env: SHEET_ID");
 
+    const sheets = getSheets();
     const { data } = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
       range: `${SHEET_TAB}!A:Z`,

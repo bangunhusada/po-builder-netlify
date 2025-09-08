@@ -6,11 +6,13 @@ exports.handler = async (event) => {
       return { statusCode: 405, body: "Method Not Allowed" };
     }
 
+    const SHEET_ID = process.env.SHEET_ID;
+    const SHEET_TAB = process.env.SHEET_TAB || "Sheet1";
+    if (!SHEET_ID) throw new Error("Missing env: SHEET_ID");
+
     const { payload } = JSON.parse(event.body || "{}");
     if (!payload) return { statusCode: 400, body: "Missing payload" };
 
-    const SHEET_ID = process.env.SHEET_ID;
-    const SHEET_TAB = process.env.SHEET_TAB || "Sheet1";
     const sheets = getSheets();
 
     const {

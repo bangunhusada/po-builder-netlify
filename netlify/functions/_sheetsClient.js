@@ -3,7 +3,12 @@ const { google } = require("googleapis");
 function getAuth() {
   const clientEmail = process.env.GCP_CLIENT_EMAIL;
   let privateKey = process.env.GCP_PRIVATE_KEY || "";
-  privateKey = privateKey.replace(/\\n/g, "\n"); // handle \n saat disimpan di env
+
+  if (!clientEmail) throw new Error("Missing env: GCP_CLIENT_EMAIL");
+  if (!privateKey) throw new Error("Missing env: GCP_PRIVATE_KEY");
+
+  // Netlify bisa menyimpan \n, ganti ke newline sungguhan
+  privateKey = privateKey.replace(/\\n/g, "\n");
 
   return new google.auth.JWT({
     email: clientEmail,
