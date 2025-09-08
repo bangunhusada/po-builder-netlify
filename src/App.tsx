@@ -54,10 +54,8 @@ function Select({ label, value, onChange, options, className = "" }: any) {
 /** ============== APP (DEFAULT EXPORT) ============== */
 export default function App() {
   /** ====== PRINT CSS (A4, clone-only) ====== */
- 
- 
- const PrintCSS = (
-  <style>{`
+  const PrintCSS = (
+    <style>{`
     @page { size: A4 portrait; margin: 12mm; }
 
     @media print {
@@ -95,9 +93,7 @@ export default function App() {
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   `}</style>
-);
-
- 
+  );
 
   /** ====== FLAGS ====== */
   const hasSheets = true; // Netlify Functions untuk Google Sheets
@@ -120,8 +116,8 @@ export default function App() {
     ttdUrl: "https://iili.io/KBb62lS.png", // <- TTD Anda
     ttdHeightMm: 50,      // tinggi maksimal gambar (hanya memengaruhi gambar)
     ttdAreaHeightMm: 18,  // JARAK tetap antara 'Pemesan' dan nama (spacer)
-    ttdX: 171,              // posisi X (px) relatif ke kotak TTD
-    ttdY: 37,              // posisi Y (px)
+    ttdX: 171,            // posisi X (px)
+    ttdY: 37,             // posisi Y (px)
     ttdScale: 1           // skala (1 = 100%)
   } as any);
 
@@ -279,7 +275,52 @@ export default function App() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
   function assemblePayload(){ return { poType, header, pemesan, pbf, kebutuhan, tanggalTempat, items, savedAt: new Date().toISOString() }; }
-  async function saveToGoogleSheets(){ try { setNetStatus("Menyimpan..."); const res = await fetch("/.netlify/functions/sheets-append", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ payload: assemblePayload() }) }); const data = await res.json(); if (data && data.error) throw new Error(data.error.message||"Gagal menyimpan"); setNetStatus("Tersimpan ke Google Sheets ✔"); setTimeout(()=> setNetStatus(""), 2500); } catch(e:any){ console.error(e); setNetStatus("Gagal menyimpan: "+ (e.message||e.toString())); } }
+
+  // ===> UPDATED: auto-bump nomor SP jika duplikat (server) dan sinkron ke UI/localStorage
+  async function saveToGoogleSheets(){
+    try {
+      setNetStatus("Menyimpan...");
+
+      const res = await fetch("/.netlify/functions/sheets-append", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payload: assemblePayload() })
+      });
+      const data = await res.json();
+
+      if (!res.ok || data?.error) {
+        throw new Error((data?.error && data.error.message) || "Gagal menyimpan");
+      }
+
+      // Nomor final yang dipakai server (bisa auto-bump)
+      const finalNum = data.nomorSPUsed || header.nomorSP;
+
+      // Update nomor di UI jika berubah
+      if (finalNum && finalNum !== header.nomorSP) {
+        setHeader((h:any) => ({ ...h, nomorSP: finalNum }));
+      }
+
+      // Sinkronkan sequence lokal untuk bulan/jenis sekarang
+      const m = String(finalNum || "").match(/^(\d{3})\/SP\/([A-Z]{3})\/(\d{2})\/(\d{4})$/);
+      if (m) {
+        const usedSeq = parseInt(m[1], 10);
+        try { localStorage.setItem(getSpKey(new Date()), String(usedSeq)); } catch {}
+      }
+
+      // Tandai used di local
+      markSpUsedLocal(finalNum);
+
+      setNetStatus(data.bumped
+        ? `Tersimpan ✔ (nomor otomatis dinaikkan ke ${finalNum})`
+        : "Tersimpan ke Google Sheets ✔");
+      setTimeout(()=> setNetStatus(""), 3000);
+    } catch(e:any){
+      console.error(e);
+      alert("Gagal menyimpan: "+ (e.message||e.toString()));
+      setNetStatus("Gagal menyimpan: "+ (e.message||e.toString()));
+    }
+  }
+
   async function loadHistory(){ try { setHistoryLoading(true); setHistoryError(""); const res = await fetch("/.netlify/functions/sheets-history"); const data = await res.json(); if (data && data.error) throw new Error(data.error.message||"Gagal memuat"); const rows = (data.rows || []) as any[]; setHistoryRows(rows); } catch(e:any){ console.error(e); setHistoryError(e.message||String(e)); } finally { setHistoryLoading(false); } }
   function restoreFromRow(row:any){ try { if (row && row.json) { const parsed = JSON.parse(row.json); if (parsed.poType) setPoType(parsed.poType); if (parsed.header) setHeader(parsed.header); if (parsed.pemesan) setPemesan(parsed.pemesan); if (parsed.pbf) setPbf(parsed.pbf); if (parsed.kebutuhan) setKebutuhan(parsed.kebutuhan); if (parsed.tanggalTempat) setTanggalTempat(parsed.tanggalTempat); if (parsed.items && parsed.items.length) setItems(parsed.items); setHistoryOpen(false); } else { alert("Baris ini tidak memiliki data JSON utuh untuk di-restore."); } } catch(e:any){ console.error(e); alert("Gagal memulihkan data: "+(e.message||e.toString())); } }
 
