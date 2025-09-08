@@ -2,9 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body { @apply bg-gray-50 text-gray-900; }
-
+/* opsional: gaya cetak ringan */
 @media print {
-  html, body { visibility: hidden !important; }
-  #po-print, #po-print * { visibility: visible !important; }
+  .no-print { display: none !important; }
 }
