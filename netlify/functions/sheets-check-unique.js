@@ -1,24 +1,27 @@
-const { getSheets } = require("./_sheetsClient");
+// netlify/functions/sheets-check-unique.js
+import { getSheets } from "./_sheetsClient.js";
 
-exports.handler = async (event) => {
+export async function handler(event) {
   try {
-    const num = event.queryStringParameters?.num || "";
-    if (!num) return { statusCode: 400, body: "Missing num" };
+    const num = new URLSearchParams(event.rawQuery || event.queryStringParameters || {}).get("num") || "";
+    if (!num) return { statusCode: 200, body: JSON.stringify({ duplicate: false }) };
 
     const SHEET_ID = process.env.SHEET_ID;
-    const SHEET_TAB = process.env.SHEET_TAB || "Sheet1";
-    if (!SHEET_ID) throw new Error("Missing env: SHEET_ID");
+    const SHEET_TAB = process.env.SHEET_TAB || "Data";
+    if (!SHEET_ID) {
+      return { statusCode: 500, body: JSON.stringify({ error: "Missing SHEET_ID" }) };
+    }
 
     const sheets = getSheets();
-    const { data } = await sheets.spreadsheets.values.get({
+    const resp = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: `${SHEET_TAB}!B:B`,
+      range: `${SHEET_TAB}!B:B` // kolom Nomor SP
     });
-    const values = (data.values || []).flat().map(String);
-    const duplicate = values.includes(String(num));
 
-    return { statusCode: 200, body: JSON.stringify({ duplicate }) };
+    const col = resp.data.values || [];
+    const dup = col.some((row) => (row?.[0] || "").trim() === num.trim());
+    return { statusCode: 200, body: JSON.stringify({ duplicate: dup }) };
   } catch (e) {
-    return { statusCode: 500, body: JSON.stringify({ error: e.message || String(e) }) };
+    return { statusCode: 500, body: JSON.stringify({ error: String(e.message || e) }) };
   }
-};
+}

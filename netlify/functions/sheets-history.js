@@ -1,31 +1,33 @@
-const { getSheets } = require("./_sheetsClient");
+// netlify/functions/sheets-history.js
+import { getSheets } from "./_sheetsClient.js";
 
-exports.handler = async () => {
+export async function handler() {
   try {
     const SHEET_ID = process.env.SHEET_ID;
-    const SHEET_TAB = process.env.SHEET_TAB || "Sheet1";
-    if (!SHEET_ID) throw new Error("Missing env: SHEET_ID");
+    const SHEET_TAB = process.env.SHEET_TAB || "Data";
+    if (!SHEET_ID) {
+      return { statusCode: 500, body: JSON.stringify({ error: "Missing SHEET_ID" }) };
+    }
 
     const sheets = getSheets();
-    const { data } = await sheets.spreadsheets.values.get({
+    const resp = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: `${SHEET_TAB}!A:Z`,
+      range: `${SHEET_TAB}!A:E`
     });
 
-    const values = data.values || [];
-    const rows = values.slice(1).map((r, idx) => ({
-      idx,
-      tanggal: r[0] || "",
-      nomorSP: r[1] || "",
-      namaKlinik: r[2] || "",
-      pemesan: r[3] || "",
-      jenis: r[4] || "",
-      ringkasan: r[5] || "",
-      json: r[6] || "",
-    }));
+    const rows = (resp.data.values || [])
+      .slice(1) // skip header kalau ada
+      .map((r, idx) => ({
+        idx,
+        tanggal: r[0] || "",
+        nomorSP: r[1] || "",
+        jenis: r[2] || "",
+        ringkasan: r[3] || "",
+        json: r[4] || ""
+      }));
 
     return { statusCode: 200, body: JSON.stringify({ rows }) };
   } catch (e) {
-    return { statusCode: 500, body: JSON.stringify({ error: e.message || String(e) }) };
+    return { statusCode: 500, body: JSON.stringify({ error: String(e.message || e) }) };
   }
-};
+}
