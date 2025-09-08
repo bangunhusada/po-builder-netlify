@@ -2,32 +2,8 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PO Builder</title>
-
-    <!-- Tailwind via CDN (paling cepat & simpel) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      // Opsional: sedikit kustomisasi (boleh dihapus kalau tidak perlu)
-      tailwind.config = {
-        theme: {
-          extend: {
-            boxShadow: {
-              sm: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-            }
-          }
-        }
-      }
-    </script>
-
-    <!-- (Opsional) font system agar lebih enak dibaca -->
-    <style>
-      html, body { font-family: ui-sans-serif, system-ui, -apple-system,
-        "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans",
-        "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";}
-      /* Saat print, hilangkan warna abu2 background halaman browser */
-      @media print { body { background: #fff !important; } }
-    </style>
   </head>
   <body>
     <div id="root"></div>

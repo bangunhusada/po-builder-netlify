@@ -1,7 +1,7 @@
 {
   "name": "po-builder-netlify",
-  "version": "1.0.0",
   "private": true,
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,22 +11,15 @@
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "googleapis": "^131.0.0"
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.1",
+    "googleapis": "^144.0.0"
   },
   "devDependencies": {
-    "@types/react": "^18.3.8",
-    "@types/react-dom": "^18.3.0",
-    "typescript": "^5.6.3",
     "vite": "^5.4.0",
-    "@vitejs/plugin-react": "^4.3.4"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  
-  "dependencies": {
-  "html2canvas": "^1.4.1",
-  "jspdf": "^2.5.1",
-  "googleapis": "^129.0.0"
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.0",
+    "@types/react": "^18.2.73",
+    "@types/react-dom": "^18.2.22"
   }
 }
