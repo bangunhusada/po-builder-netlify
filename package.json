@@ -21,5 +21,10 @@
     "typescript": "^5.5.0",
     "@types/react": "^18.2.73",
     "@types/react-dom": "^18.2.22"
+  },
+  "devDependencies": {
+  "tailwindcss": "^3.4.10",
+  "postcss": "^8.4.41",
+  "autoprefixer": "^10.4.20"
   }
 }
