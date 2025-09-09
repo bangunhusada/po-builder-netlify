@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 /** ============== UI PRIMITIVES ============== */
 function Card({ title, children }: any) {
@@ -56,36 +56,28 @@ export default function App() {
   /** ====== PRINT CSS (A4, clone-only) ====== */
   const PrintCSS = (
     <style>{`
-      @page { size: A4 portrait; margin: 12mm; }
-
-      @media print {
-        html, body { visibility: hidden !important; margin: 0 !important; padding: 0 !important; }
-        #po-print, #po-print * { visibility: visible !important; }
-
-        #po-print {
-          position: absolute !important;
-          top: 0 !important;
-          left: 0 !important;
-          right: 0 !important;
-          margin: 0 auto !important;
-          width: 186mm !important;
-          padding: 0 !important;
-          box-shadow: none !important;
-          background: #fff !important;
-          page-break-after: avoid !important;
-        }
-
-        #po-print table { border-collapse: collapse !important; }
-        #po-print th, #po-print td { border: 1px solid #000 !important; }
-
-        #po-print, #po-print table, #po-print tr, #po-print img {
-          break-inside: avoid;
-          page-break-inside: avoid;
-        }
-
-        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    @page { size: A4 portrait; margin: 12mm; }
+    @media print {
+      html, body { visibility: hidden !important; margin: 0 !important; padding: 0 !important; }
+      #po-print, #po-print * { visibility: visible !important; }
+      #po-print {
+        position: absolute !important;
+        top: 0 !important; left: 0 !important; right: 0 !important;
+        margin: 0 auto !important;
+        width: 186mm !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        background: #fff !important;
+        page-break-after: avoid !important;
       }
-    `}</style>
+      #po-print table { border-collapse: collapse !important; }
+      #po-print th, #po-print td { border: 1px solid #000 !important; }
+      #po-print, #po-print table, #po-print tr, #po-print img {
+        break-inside: avoid; page-break-inside: avoid;
+      }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  `}</style>
   );
 
   /** ====== FLAGS ====== */
@@ -104,7 +96,7 @@ export default function App() {
     judul: "SURAT PESANAN",
     nomorSP: "",
     logoUrl: "https://iili.io/KBiv0xa.png",
-    // TTD
+    /** ===== TTD (gambar/scan) ===== */
     ttdUrl: "https://iili.io/KBb62lS.png",
     ttdHeightMm: 50,
     ttdAreaHeightMm: 18,
@@ -216,7 +208,7 @@ export default function App() {
     return base;
   }, [optionsZatAktif]);
 
-  /** ====== PANEL KELOLA LIST ====== */
+  /** ====== PANEL KELola LIST ====== */
   const [zOpen, setZOpen] = useState(false);
   const [preNew, setPreNew] = useState("");
   const [ootNew, setOotNew] = useState("");
@@ -283,11 +275,14 @@ export default function App() {
   async function saveToGoogleSheets(){
     try {
       setNetStatus("Menyimpan...");
-      const res = await fetch("/.netlify/functions/sheets-append", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ payload: assemblePayload() }) });
+      const res = await fetch("/.netlify/functions/sheets-append", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payload: assemblePayload() })
+      });
       const data = await res.json();
       if (data && data.error) throw new Error(data.error.message||"Gagal menyimpan");
       setNetStatus("Tersimpan ke Google Sheets ✔");
-      markSpUsedLocal(header.nomorSP);
       setTimeout(()=> setNetStatus(""), 2500);
     } catch(e:any){
       console.error(e);
@@ -296,19 +291,15 @@ export default function App() {
   }
   async function loadHistory(){
     try {
-      setHistoryLoading(true);
-      setHistoryError("");
+      setHistoryLoading(true); setHistoryError("");
       const res = await fetch("/.netlify/functions/sheets-history");
       const data = await res.json();
       if (data && data.error) throw new Error(data.error.message||"Gagal memuat");
       const rows = (data.rows || []) as any[];
       setHistoryRows(rows);
     } catch(e:any){
-      console.error(e);
-      setHistoryError(e.message||String(e));
-    } finally {
-      setHistoryLoading(false);
-    }
+      console.error(e); setHistoryError(e.message||String(e));
+    } finally { setHistoryLoading(false); }
   }
   function restoreFromRow(row:any){
     try {
@@ -343,7 +334,7 @@ export default function App() {
 
   /** ====== DRAG TTD ====== */
   const [dragging, setDragging] = useState(false);
-  const dragRef = useRef<{startX:number; startY:number; x0:number; y0:number} | null>(null);
+  const dragRef = React.useRef<{startX:number; startY:number; x0:number; y0:number} | null>(null);
   function onSigMouseDown(e: React.MouseEvent<HTMLDivElement>) {
     setDragging(true);
     dragRef.current = { startX: e.clientX, startY: e.clientY, x0: header.ttdX || 0, y0: header.ttdY || 0 };
@@ -382,115 +373,21 @@ export default function App() {
     if (spAuto) incrementSp();
   }
 
-  /** ================= AUTOSAVE DRAF (BARU) ================= */
-  const AUTOSAVE_KEY = "po-builder-draft-v1";
-  const [autoSaveStatus, setAutoSaveStatus] = useState<string>("");
-  const [draftInfo, setDraftInfo] = useState<{ exists:boolean; when?:string }>({ exists:false });
-  const autoSaveTimer = useRef<number | null>(null);
-
-  // Cek ketersediaan draf saat mount
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(AUTOSAVE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const when = parsed?.__savedAt ? new Date(parsed.__savedAt).toLocaleTimeString() : undefined;
-        setDraftInfo({ exists: true, when });
-      }
-    } catch {}
-  }, []);
-
-  // Simpan manual (bisa dipakai tombol)
-  function saveDraftNow() {
-    try {
-      const payload = assemblePayload();
-      const pack = { ...payload, __savedAt: new Date().toISOString() };
-      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(pack));
-      setAutoSaveStatus("Tersimpan otomatis " + new Date().toLocaleTimeString());
-      setDraftInfo({ exists: true, when: new Date().toLocaleTimeString() });
-    } catch (e:any) {
-      setAutoSaveStatus("Gagal menyimpan draf: " + (e?.message || e));
-    }
-  }
-
-  // Hapus draf
-  function clearDraft() {
-    try { localStorage.removeItem(AUTOSAVE_KEY); } catch {}
-    setDraftInfo({ exists:false });
-    setAutoSaveStatus("Draf dihapus");
-    setTimeout(()=> setAutoSaveStatus(""), 1800);
-  }
-
-  // Pulihkan draf
-  function restoreDraft() {
-    try {
-      const raw = localStorage.getItem(AUTOSAVE_KEY);
-      if (!raw) { alert("Tidak ada draf"); return; }
-      const parsed = JSON.parse(raw);
-      if (parsed.poType) setPoType(parsed.poType);
-      if (parsed.header) setHeader(parsed.header);
-      if (parsed.pemesan) setPemesan(parsed.pemesan);
-      if (parsed.pbf) setPbf(parsed.pbf);
-      if (parsed.kebutuhan) setKebutuhan(parsed.kebutuhan);
-      if (parsed.tanggalTempat) setTanggalTempat(parsed.tanggalTempat);
-      if (parsed.items && parsed.items.length) setItems(parsed.items);
-      setAutoSaveStatus("Draf dipulihkan");
-      setTimeout(()=> setAutoSaveStatus(""), 1800);
-    } catch (e:any) {
-      alert("Gagal memulihkan draf: " + (e?.message || e));
-    }
-  }
-
-  // Autosave (debounce 800ms) setiap ada perubahan payload
-  useEffect(() => {
-    // bersihkan timer lama
-    if (autoSaveTimer.current) {
-      window.clearTimeout(autoSaveTimer.current);
-    }
-    autoSaveTimer.current = window.setTimeout(() => {
-      saveDraftNow();
-    }, 800) as unknown as number;
-
-    return () => {
-      if (autoSaveTimer.current) {
-        window.clearTimeout(autoSaveTimer.current);
-      }
-    };
-    // Perubahan yang dipantau
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [poType, header, pemesan, pbf, kebutuhan, tanggalTempat, items]);
-
   /** ====== UI ====== */
   const line = useMemo(() => <div className="w-full h-px bg-gray-400 my-2" />, []);
+
+  /** ====== API KEY OPSIONAL (untuk secure fungsi PBF) ====== */
+  const API_KEY_HEADER: Record<string, string> | undefined = undefined;
+  // Jika kamu set env API_KEY di Netlify, aktifkan baris berikut:
+  // const API_KEY_HEADER = { "x-api-key": "ISI_SAMA_DENGAN_ENV_API_KEY" };
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       {PrintCSS}
 
       {/* Toolbar */}
-      <div className="no-print sticky top-0 z-10 border-b bg-white/80 backdrop-blur px-4 py-3 flex flex-wrap items-center gap-2">
+      <div className="no-print sticky top-0 z-10 border-b bg-white/80 backdrop-blur px-4 py-3 flex items-center gap-2">
         <h1 className="text-lg font-semibold">Purchase Order – Builder (Lengkap)</h1>
-
-        {/* Autosave controls (BARU) */}
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          {draftInfo.exists && (
-            <button onClick={restoreDraft} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">
-              Pulihkan Draf{draftInfo.when ? ` (${draftInfo.when})` : ""}
-            </button>
-          )}
-          <button onClick={saveDraftNow} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">
-            Simpan Sekarang
-          </button>
-          <button onClick={clearDraft} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">
-            Hapus Draf
-          </button>
-          {autoSaveStatus && (
-            <span className="text-xs text-gray-600">{autoSaveStatus}</span>
-          )}
-        </div>
-
-        <div className="w-full" />
-
         <div className="ml-auto flex gap-2">
           <button onClick={newPO} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">PO Baru</button>
           <button onClick={addRow} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Tambah Baris</button>
@@ -518,9 +415,11 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Select label="Jenis PO" value={poType} onChange={setPoType} options={["Reguler","Prekursor","Obat-obat tertentu"]} />
             </div>
+          </Card>
 
-            {/* Nomor SP & Status Unik (diletakkan di bawah jenis PO) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end mt-3">
+          {/* Nomor SP (dipindah keluar mode fokus, di bawah Jenis PO) */}
+          <Card title="Nomor SP & Status">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end text-[0.95rem]">
               <Input label="Nomor SP" value={header.nomorSP} onChange={(v:string)=> setHeader((h:any)=> ({...h, nomorSP:v}))} />
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={spAuto} onChange={(e)=> setSpAuto((e.target as HTMLInputElement).checked)} />
@@ -531,8 +430,8 @@ export default function App() {
                 <button onClick={incrementSp} className="px-3 py-2 rounded-xl border text-sm">Naikkan</button>
               </div>
             </div>
-            <div className="text-[13px] text-gray-700 mt-1">
-              Status lokal: {isSpUsedLocal ? <span className="text-red-600 font-medium">Duplikat</span> : <span className="text-green-700 font-medium">Unik</span>}
+            <div className="text-sm text-gray-700 mt-2">
+              Status lokal: {isSpUsedLocal ? <span className="text-red-600">Duplikat</span> : <span className="text-green-700">Unik</span>}
               {hasSheets && (<>
                 {' · '}<button onClick={()=> checkSpUniqueRemote(header.nomorSP)} className="underline">Cek unik ke Sheets</button>
                 {spRemoteStatus && <> — {spRemoteStatus}</>}
@@ -549,7 +448,6 @@ export default function App() {
                 <Input label="Telp" value={header.telp} onChange={(v:string)=> setHeader((h:any)=> ({...h, telp:v}))} />
                 <Input label="Alamat" className="md:col-span-2" value={header.alamat} onChange={(v:string)=> setHeader((h:any)=> ({...h, alamat:v}))} />
                 <Input label="Logo URL (opsional)" className="md:col-span-2" value={header.logoUrl} onChange={(v:string)=> setHeader((h:any)=> ({...h, logoUrl:v}))} placeholder="https://.../logo.png" />
-
                 {/* TTD */}
                 <Input label="Tanda Tangan URL (opsional)" className="md:col-span-2" value={header.ttdUrl} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdUrl:v}))} placeholder="https://.../tanda-tangan.png" />
                 <Input label="Tinggi maksimal TTD (mm)" value={String(header.ttdHeightMm)} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdHeightMm: Math.max(10, Math.min(60, parseInt(v||'22',10) || 22))}))} type="number" />
@@ -891,10 +789,53 @@ export default function App() {
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-lg font-semibold">Kelola Template PBF</h3>
               <div className="ml-auto flex gap-2">
+                {/* ====== Tambahan tombol sinkron PBF ke Google Sheets ====== */}
+                <button
+                  onClick={async () => {
+                    try {
+                      const r = await fetch("/.netlify/functions/sheets-pbf", {
+                        headers: API_KEY_HEADER ? API_KEY_HEADER : {}
+                      });
+                      const data = await r.json();
+                      if (!r.ok) throw new Error(data?.error || "Gagal memuat");
+                      if (Array.isArray(data.templates)) setPbfTemplates(data.templates);
+                      alert("Berhasil tarik Template PBF dari Google Sheets.");
+                    } catch (e:any) {
+                      alert("Gagal tarik dari Sheets: " + (e?.message || String(e)));
+                    }
+                  }}
+                  className="px-3 py-2 border rounded-lg text-sm"
+                >
+                  Tarik dari Sheets
+                </button>
+
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch("/.netlify/functions/sheets-pbf", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          ...(API_KEY_HEADER || {})
+                        },
+                        body: JSON.stringify({ templates: pbfTemplates }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data?.error || "Gagal simpan");
+                      alert("Berhasil kirim Template PBF ke Google Sheets.");
+                    } catch (e:any) {
+                      alert("Gagal kirim ke Sheets: " + (e?.message || String(e)));
+                    }
+                  }}
+                  className="px-3 py-2 border rounded-lg text-sm"
+                >
+                  Kirim ke Sheets
+                </button>
+
                 <button onClick={()=> setPbfOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
               </div>
             </div>
-            {pbfTemplates.length===0 && <p className="text-sm text-gray-600">Belum ada template. Isi data PBF lalu klik <b>Simpan sebagai Template</b>.</p>}
+            {pbfTemplates.length===0 && <p className="text-sm text-gray-600">Belum ada template. Isi data PBF lalu klik <b>Simpan sebagai Template</b>, atau <b>Tarik dari Sheets</b>.</p>}
             <div className="space-y-3">
               {pbfTemplates.map((t,i)=> (
                 <div key={i} className="border rounded-xl p-3 text-sm grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
@@ -907,6 +848,9 @@ export default function App() {
                   </div>
                 </div>
               ))}
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <button onClick={saveCurrentPbfAsTemplate} className="px-3 py-2 border rounded-lg text-sm">Simpan sebagai Template</button>
             </div>
           </div>
         </div>
