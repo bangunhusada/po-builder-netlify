@@ -376,43 +376,10 @@ export default function App() {
   /** ====== UI ====== */
   const line = useMemo(() => <div className="w-full h-px bg-gray-400 my-2" />, []);
 
-  /** ====== API KEY OPSIONAL (untuk secure fungsi PBF/ZAT) ====== */
+  /** ====== API KEY OPSIONAL (untuk secure fungsi PBF) ====== */
   const API_KEY_HEADER: Record<string, string> | undefined = undefined;
-  // Jika kamu set env API_KEY di Netlify, aktifkan baris berikut dengan nilai yang sama:
+  // Jika kamu set env API_KEY di Netlify, aktifkan baris berikut:
   // const API_KEY_HEADER = { "x-api-key": "ISI_SAMA_DENGAN_ENV_API_KEY" };
-
-  /** ====== (BARU) Sinkron Zat Aktif ke Google Sheets ====== */
-  async function pullZatFromSheets() {
-    try {
-      const res = await fetch("/.netlify/functions/sheets-zat", {
-        headers: API_KEY_HEADER ? API_KEY_HEADER : {},
-      });
-      const data = await res.json();
-      if (!res.ok || data?.error) throw new Error(data?.error || "Gagal memuat");
-      if (Array.isArray(data.pre)) setPreList(data.pre);
-      if (Array.isArray(data.oot)) setOotList(data.oot);
-      alert("Berhasil tarik Zat Aktif dari Google Sheets.");
-    } catch (e:any) {
-      alert("Gagal tarik: " + (e?.message || String(e)));
-    }
-  }
-  async function pushZatToSheets() {
-    try {
-      const res = await fetch("/.netlify/functions/sheets-zat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(API_KEY_HEADER || {}),
-        },
-        body: JSON.stringify({ pre: preList, oot: ootList }),
-      });
-      const data = await res.json();
-      if (!res.ok || data?.error) throw new Error(data?.error || "Gagal simpan");
-      alert(`Berhasil kirim ke Sheets. Pre: ${data.counts?.pre || 0}, OOT: ${data.counts?.oot || 0}`);
-    } catch (e:any) {
-      alert("Gagal kirim: " + (e?.message || String(e)));
-    }
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -740,10 +707,6 @@ export default function App() {
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-lg font-semibold">Kelola Zat Aktif</h3>
               <div className="ml-auto flex gap-2">
-                {/* (BARU) Sinkron ke Sheets */}
-                <button onClick={pullZatFromSheets} className="px-3 py-2 border rounded-lg text-sm">Tarik dari Sheets</button>
-                <button onClick={pushZatToSheets} className="px-3 py-2 border rounded-lg text-sm">Kirim ke Sheets</button>
-
                 <button onClick={resetZat} className="px-3 py-2 border rounded-lg text-sm">Reset ke Default</button>
                 <button onClick={()=> setZOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
               </div>
