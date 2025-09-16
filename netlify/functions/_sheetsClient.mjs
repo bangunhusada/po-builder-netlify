@@ -1,20 +1,15 @@
 // netlify/functions/_sheetsClient.mjs
 import { google } from "googleapis";
 
-export function getSheets() {
-  const clientEmail = process.env.GCP_CLIENT_EMAIL || "";
-  let privateKey = process.env.GCP_PRIVATE_KEY || "";
-  privateKey = privateKey.replace(/\\n/g, "\n"); // handle \n
-
-  if (!clientEmail || !privateKey) {
-    throw new Error("Missing GCP_CLIENT_EMAIL / GCP_PRIVATE_KEY");
-  }
+export async function getSheets() {
+  const client_email = process.env.GCP_CLIENT_EMAIL;
+  const private_key = (process.env.GCP_PRIVATE_KEY || "").replace(/\\n/g, "\n");
+  if (!client_email || !private_key) throw new Error("Missing GCP credentials");
 
   const auth = new google.auth.JWT({
-    email: clientEmail,
-    key: privateKey,
+    email: client_email,
+    key: private_key,
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
-
   return google.sheets({ version: "v4", auth });
 }
