@@ -80,31 +80,18 @@ export default function App() {
   `}</style>
   );
 
-  /** ====== (TAMBAHAN) CSS untuk tampilan layar biar tidak “terpotong” ====== */
+  /** ====== CSS layar agar tidak “terpotong” ====== */
   const ScreenCSS = (
     <style>{`
-      /* Kontainer preview di layar bisa scroll horizontal kalau kolom sempit */
-      .screen-preview {
-        overflow-x: auto;
-      }
-      /* Samakan lebar dengan A4 area yang dipakai saat print */
-      .print-page {
-        width: 186mm;
-        margin: 0 auto;
-        overflow: visible;
-      }
-      .print-page table {
-        table-layout: fixed;
-        width: 100%;
-      }
-      .print-page th, .print-page td {
-        word-break: break-word;
-      }
+      .screen-preview { overflow-x: auto; }
+      .print-page { width: 186mm; margin: 0 auto; overflow: visible; }
+      .print-page table { table-layout: fixed; width: 100%; }
+      .print-page th, .print-page td { word-break: break-word; }
     `}</style>
   );
 
   /** ====== FLAGS ====== */
-  const hasSheets = true; // Netlify Functions untuk Google Sheets
+  const hasSheets = true; // nyalakan tombol simpan/riwayat
 
   /** ====== STATE UTAMA ====== */
   const [poType, setPoType] = useState("Prekursor"); // Reguler | Prekursor | Obat-obat tertentu
@@ -119,7 +106,6 @@ export default function App() {
     judul: "SURAT PESANAN",
     nomorSP: "",
     logoUrl: "https://iili.io/KBiv0xa.png",
-    /** ===== TTD (gambar/scan) ===== */
     ttdUrl: "https://iili.io/KBb62lS.png",
     ttdHeightMm: 50,
     ttdAreaHeightMm: 18,
@@ -231,17 +217,64 @@ export default function App() {
     return base;
   }, [optionsZatAktif]);
 
-  /** ====== PANEL KELola LIST ====== */
-  const [zOpen, setZOpen] = useState(false);
-  const [preNew, setPreNew] = useState("");
-  const [ootNew, setOotNew] = useState("");
-  function addPre(){ const v=preNew.trim(); if(!v) return; setPreList(p => dedup(p.concat([v]))); setPreNew(""); }
-  function addOOT(){ const v=ootNew.trim(); if(!v) return; setOotList(p => dedup(p.concat([v]))); setOotNew(""); }
-  function delPre(i:number){ setPreList(p => p.filter((_,idx)=> idx!==i)); }
-  function delOOT(i:number){ setOotList(p => p.filter((_,idx)=> idx!==i)); }
-  function renamePre(i:number, val:string){ setPreList(p => { const c=p.slice(); c[i]=val; return dedup(c); }); }
-  function renameOOT(i:number, val:string){ setOotList(p => { const c=p.slice(); c[i]=val; return dedup(c); }); }
-  function resetZat(){ if (confirm("Kembalikan daftar ke bawaan? (Semua perubahan akan dihapus)")) { setPreList(dedup(DEFAULT_PREKURSOR)); setOotList(dedup(DEFAULT_OOT)); } }
+  /** ====== MASTER ITEM (baru) ======
+   *  Format item master: { nama, zatAktif, bentukKekuatan, satuan }
+   *  Tersimpan lokal; ada tombol opsional sinkron ke Google Sheets (endpoint opsional).
+   */
+  type MasterItem = { nama: string; zatAktif?: string; bentukKekuatan?: string; satuan?: string };
+  const [masterItems, setMasterItems] = useState<MasterItem[]>(() => {
+    try { const v = JSON.parse(localStorage.getItem("master-items") || "null"); return Array.isArray(v) ? v : []; } catch { return []; }
+  });
+  useEffect(() => { try { localStorage.setItem("master-items", JSON.stringify(masterItems)); } catch {} }, [masterItems]);
+
+  const [masterOpen, setMasterOpen] = useState(false);
+  const [mNama, setMNama] = useState("");
+  const [mZat, setMZat] = useState("");
+  const [mForm, setMForm] = useState("");
+  const [mSat, setMSat] = useState("");
+
+  function addMaster() {
+    const nama = (mNama || "").trim();
+    if (!nama) return;
+    setMasterItems(prev => prev.concat([{ nama, zatAktif: mZat.trim(), bentukKekuatan: mForm.trim(), satuan: mSat.trim() }]));
+    setMNama(""); setMZat(""); setMForm(""); setMSat("");
+  }
+  function delMaster(i:number){ setMasterItems(prev => prev.filter((_,idx)=> idx!==i)); }
+  function updMaster(i:number, field:keyof MasterItem, val:string){
+    setMasterItems(prev => {
+      const c = prev.slice();
+      if (!c[i]) return prev;
+      (c[i] as any)[field] = val;
+      return c;
+    });
+  }
+
+  // opsi dropdown "Dari Master" untuk baris item
+  const masterOptions = useMemo(() => {
+    const base = [{ value: "", label: "-- Dari Master (Nama + Zat) --" }];
+    masterItems.forEach((it, i) => {
+      const lab = `${it.nama}${it.zatAktif ? " — " + it.zatAktif : ""}`;
+      (base as any).push({ value: String(i), label: lab });
+    });
+    return base;
+  }, [masterItems]);
+
+  function applyMasterToRow(masterIndexStr:string, rowIndex:number){
+    if (!masterIndexStr) return;
+    const idx = parseInt(masterIndexStr, 10);
+    const src = masterItems[idx];
+    if (!src) return;
+    setItems(prev => prev.map((r,i)=> i===rowIndex
+      ? {
+          ...r,
+          nama: src.nama || r.nama,
+          zatAktif: src.zatAktif || r.zatAktif,
+          bentukKekuatan: src.bentukKekuatan || r.bentukKekuatan,
+          satuan: src.satuan || r.satuan
+        }
+      : r
+    ));
+  }
 
   /** ====== FAVORIT ITEM ====== */
   const [favOpen, setFavOpen] = useState(false);
@@ -260,7 +293,7 @@ export default function App() {
   function deletePbfTemplate(i:number){ setPbfTemplates(prev => prev.filter((_, idx) => idx !== i)); }
   function renamePbfTemplate(i:number, field:string, val:string){ setPbfTemplates(prev => { const c = prev.slice(); if(!c[i]) return prev; c[i] = Object.assign({}, c[i], { [field]: val }); return c; }); }
 
-  /** ====== NOMOR SP UNIK (lokal & remote) ====== */
+  /** ====== NOMOR SP UNIK ====== */
   const [spRemoteStatus, setSpRemoteStatus] = useState('');
   function loadUsedSpLocal(){ try { const v = JSON.parse(localStorage.getItem('sp-used-local') || '[]'); return Array.isArray(v) ? new Set(v) : new Set(); } catch { return new Set(); } }
   function saveUsedSpLocal(setv:Set<string>){ try { localStorage.setItem('sp-used-local', JSON.stringify(Array.from(setv))); } catch {} }
@@ -353,7 +386,6 @@ export default function App() {
       if (x >= 12) return angka[x-10]+" belas"; if (x===11) return "sebelas"; if (x===10) return "sepuluh"; return angka[x]; }
     const skala=["", "ribu", "juta", "miliar", "triliun"], parts:string[]=[]; let i=0; while(n>0){ const rem=n%1000; if(rem){ let ch=tigaDigit(rem); if(i===1 && rem===1) ch="seribu"; else if(i>0) ch+=" "+skala[i]; parts.unshift(ch); } n=Math.floor(n/1000); i++; } return parts.join(" "); }
   function capFirst(s:string){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
-  function formatJumlah(val:any){ const n=parseInt(val,10); if(!isFinite(n)) return val||""; return String(n)+" ("+capFirst(terbilangID(n))+")"; }
 
   /** ====== DRAG TTD ====== */
   const [dragging, setDragging] = useState(false);
@@ -399,7 +431,7 @@ export default function App() {
   /** ====== UI ====== */
   const line = useMemo(() => <div className="w-full h-px bg-gray-400 my-2" />, []);
 
-  /** ====== API KEY OPSIONAL (untuk secure fungsi PBF) ====== */
+  /** ====== API KEY OPSIONAL utk fungsi-fungsi admin ====== */
   const API_KEY_HEADER: Record<string, string> | undefined = undefined;
   // Jika kamu set env API_KEY di Netlify, aktifkan baris berikut:
   // const API_KEY_HEADER = { "x-api-key": "ISI_SAMA_DENGAN_ENV_API_KEY" };
@@ -416,6 +448,7 @@ export default function App() {
           <button onClick={newPO} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">PO Baru</button>
           <button onClick={addRow} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Tambah Baris</button>
           <button onClick={()=> setZOpen(true)} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Kelola Zat Aktif</button>
+          <button onClick={()=> setMasterOpen(true)} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Kelola Master Item</button>
           <button onClick={()=> { setHistoryOpen(true); loadHistory(); }} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Riwayat</button>
           {hasSheets && (
             <button onClick={saveToGoogleSheets} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Simpan ke Google Sheets</button>
@@ -441,7 +474,7 @@ export default function App() {
             </div>
           </Card>
 
-          {/* Nomor SP (dipindah keluar mode fokus, di bawah Jenis PO) */}
+          {/* Nomor SP */}
           <Card title="Nomor SP & Status">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end text-[0.95rem]">
               <Input label="Nomor SP" value={header.nomorSP} onChange={(v:string)=> setHeader((h:any)=> ({...h, nomorSP:v}))} />
@@ -472,10 +505,9 @@ export default function App() {
                 <Input label="Telp" value={header.telp} onChange={(v:string)=> setHeader((h:any)=> ({...h, telp:v}))} />
                 <Input label="Alamat" className="md:col-span-2" value={header.alamat} onChange={(v:string)=> setHeader((h:any)=> ({...h, alamat:v}))} />
                 <Input label="Logo URL (opsional)" className="md:col-span-2" value={header.logoUrl} onChange={(v:string)=> setHeader((h:any)=> ({...h, logoUrl:v}))} placeholder="https://.../logo.png" />
-                {/* TTD */}
                 <Input label="Tanda Tangan URL (opsional)" className="md:col-span-2" value={header.ttdUrl} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdUrl:v}))} placeholder="https://.../tanda-tangan.png" />
                 <Input label="Tinggi maksimal TTD (mm)" value={String(header.ttdHeightMm)} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdHeightMm: Math.max(10, Math.min(60, parseInt(v||'22',10) || 22))}))} type="number" />
-                <Input label="Tinggi ruang TTD (mm) — jarak Pemesan ↔ Nama" value={String(header.ttdAreaHeightMm)} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdAreaHeightMm: Math.max(10, Math.min(60, parseInt(v||'18',10) || 18))}))} type="number" />
+                <Input label="Tinggi ruang TTD (mm)" value={String(header.ttdAreaHeightMm)} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdAreaHeightMm: Math.max(10, Math.min(60, parseInt(v||'18',10) || 18))}))} type="number" />
                 <div className="md:col-span-2 grid grid-cols-3 gap-3">
                   <Input label="Posisi X (px)" value={String(header.ttdX)} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdX: parseInt(v||'0',10) || 0}))} type="number" />
                   <Input label="Posisi Y (px)" value={String(header.ttdY)} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdY: parseInt(v||'0',10) || 0}))} type="number" />
@@ -495,16 +527,6 @@ export default function App() {
           )}
 
           {showMeta && (
-            <Card title="Pemesan">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input label="Nama" value={pemesan.nama} onChange={(v:string)=> setPemesan(p=> ({...p, nama:v}))} />
-                <Input label="Jabatan" value={pemesan.jabatan} onChange={(v:string)=> setPemesan(p=> ({...p, jabatan:v}))} />
-                <Input label="Nomor SIPA" className="md:col-span-2" value={pemesan.sipa} onChange={(v:string)=> setPemesan(p=> ({...p, sipa:v}))} />
-              </div>
-            </Card>
-          )}
-
-          {showMeta && (
             <Card title="Kebutuhan Faskes">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Input label="Nama Klinik" value={kebutuhan.namaKlinik} onChange={(v:string)=> setKebutuhan(k=> ({...k, namaKlinik:v}))} />
@@ -515,17 +537,6 @@ export default function App() {
           )}
 
           <Card title="Mengajukan pesanan obat kepada">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end mb-2">
-              <label className="block">
-                <span className="text-xs text-gray-600">Template PBF</span>
-                <select onChange={(e)=> { const i = parseInt((e.target as HTMLSelectElement).value,10); if(!isNaN(i) && i>=0) applyPbfTemplate(i); (e.target as HTMLSelectElement).value='-1'; }} defaultValue="-1" className="mt-1 w-full rounded-xl border px-3 py-2 text-sm bg-white">
-                  <option value="-1">-- Pilih Template --</option>
-                  {pbfTemplates.map((t:any,i:number)=> (<option key={i} value={i}>{t.nama||('Template '+(i+1))}</option>))}
-                </select>
-              </label>
-              <button onClick={saveCurrentPbfAsTemplate} className="px-3 py-2 rounded-xl border text-sm">Simpan sebagai Template</button>
-              <button onClick={()=> setPbfOpen(true)} className="px-3 py-2 rounded-xl border text-sm">Kelola Template</button>
-            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Input label="Nama PBF" value={pbf.nama} onChange={(v:string)=> setPbf({...pbf, nama:v})} />
               <Input label="Telepon" value={pbf.telp} onChange={(v:string)=> setPbf({...pbf, telp:v})} />
@@ -539,20 +550,34 @@ export default function App() {
               <div className="flex gap-2">
                 <button onClick={()=> setFavOpen(true)} className="text-xs px-2 py-1 border rounded-lg">Tambah dari Favorit</button>
                 <button onClick={addRow} className="text-xs px-2 py-1 border rounded-lg">Tambah Baris</button>
+                <button onClick={()=> setMasterOpen(true)} className="text-xs px-2 py-1 border rounded-lg">Kelola Master Item</button>
+                <button onClick={()=> setZOpen(true)} className="text-xs px-2 py-1 border rounded-lg">Kelola Zat Aktif</button>
               </div>
             </div>
+
             <div className="space-y-4">
               {items.map((it, idx) => (
                 <div key={idx} className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-12 md:col-span-4">
                     <Input label={`Nama Obat #${idx+1}`} placeholder="Nama Obat" value={it.nama} onChange={(v:string)=> handleItemChange(idx, 'nama', v)} />
                   </div>
+
+                  {/* DROPDOWN DARI MASTER (opsional) */}
+                  <div className="col-span-12 md:col-span-4">
+                    <Select
+                      label="Dari Master (opsional)"
+                      value={""}
+                      onChange={(v:string)=> { applyMasterToRow(v, idx); }}
+                      options={masterOptions}
+                    />
+                  </div>
+
                   {showZatAktif && (
                     <div className="col-span-6 md:col-span-2">
                       <Select label="Zat Aktif" value={it.zatAktif || ''} onChange={(v:string)=> handleItemChange(idx, 'zatAktif', v)} options={zatOptions} />
                     </div>
                   )}
-                  <div className="col-span-6 md:col-span-3">
+                  <div className="col-span-6 md:col-span-2">
                     <Input label="Bentuk & Kekuatan" value={it.bentukKekuatan} onChange={(v:string)=> handleItemChange(idx, 'bentukKekuatan', v)} />
                   </div>
                   <div className="col-span-4 md:col-span-1">
@@ -665,7 +690,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* TANDA TANGAN (overlay; jarak tetap & pendek) */}
+              {/* TANDA TANGAN */}
               <div className="mt-8 text-sm">
                 <div className="flex justify-end">
                   <div className="w-80 text-center avoid-break">
@@ -675,11 +700,7 @@ export default function App() {
                     {header.ttdUrl ? (
                       <div
                         className={`${dragging ? 'select-none' : ''}`}
-                        style={{
-                          position: 'relative',
-                          height: `${header.ttdAreaHeightMm}mm`,
-                          overflow: 'visible',
-                        }}
+                        style={{ position: 'relative', height: `${header.ttdAreaHeightMm}mm`, overflow: 'visible' }}
                         onMouseMove={onSigMouseMove}
                         onMouseUp={onSigMouseUp}
                         onMouseLeave={onSigMouseUp}
@@ -698,12 +719,7 @@ export default function App() {
                           <img
                             src={header.ttdUrl}
                             alt="Tanda tangan"
-                            style={{
-                              maxHeight: `${header.ttdHeightMm}mm`,
-                              maxWidth: '100%',
-                              objectFit: 'contain',
-                              display: 'block'
-                            }}
+                            style={{ maxHeight: `${header.ttdHeightMm}mm`, maxWidth: '100%', objectFit: 'contain', display: 'block' }}
                             draggable={false}
                           />
                         </div>
@@ -738,38 +754,8 @@ export default function App() {
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-medium mb-2">Prekursor (Tambah/Ubah)</h4>
-                <div className="flex gap-2 mb-3">
-                  <input value={preNew} onChange={(e)=> setPreNew((e.target as HTMLInputElement).value)} placeholder="Tambah zat aktif prekursor..." className="flex-1 rounded-xl border px-3 py-2 text-sm" />
-                  <button onClick={addPre} className="px-3 py-2 border rounded-lg text-sm">Tambah</button>
-                </div>
-                <div className="space-y-2">
-                  {preList.length === 0 && <div className="text-xs text-gray-500">Belum ada item.</div>}
-                  {preList.map((v,i)=> (
-                    <div key={i} className="flex items-center gap-2">
-                      <input value={v} onChange={(e)=> renamePre(i, (e.target as HTMLInputElement).value)} className="flex-1 rounded-xl border px-3 py-2 text-sm" />
-                      <button onClick={()=> delPre(i)} className="px-2 py-2 border rounded-lg text-xs">Hapus</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h4 className="font-medium mb-2">Obat-obat Tertentu (Tambah/Ubah)</h4>
-                <div className="flex gap-2 mb-3">
-                  <input value={ootNew} onChange={(e)=> setOotNew((e.target as HTMLInputElement).value)} placeholder="Tambah zat aktif OOT..." className="flex-1 rounded-xl border px-3 py-2 text-sm" />
-                  <button onClick={addOOT} className="px-3 py-2 border rounded-lg text-sm">Tambah</button>
-                </div>
-                <div className="space-y-2">
-                  {ootList.length === 0 && <div className="text-xs text-gray-500">Belum ada item.</div>}
-                  {ootList.map((v,i)=> (
-                    <div key={i} className="flex items-center gap-2">
-                      <input value={v} onChange={(e)=> renameOOT(i, (e.target as HTMLInputElement).value)} className="flex-1 rounded-xl border px-3 py-2 text-sm" />
-                      <button onClick={()=> delOOT(i)} className="px-2 py-2 border rounded-lg text-xs">Hapus</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <ZatPanel title="Prekursor" list={preList} setList={setPreList} />
+              <ZatPanel title="Obat-obat Tertentu" list={ootList} setList={setOotList} />
             </div>
             <p className="mt-6 text-xs text-gray-500">Perubahan tersimpan otomatis di perangkat ini (localStorage).</p>
           </div>
@@ -807,77 +793,79 @@ export default function App() {
         </div>
       )}
 
-      {/* Template PBF */}
-      {pbfOpen && (
+      {/* Kelola MASTER ITEM */}
+      {masterOpen && (
         <div className="fixed inset-0 z-40">
-          <div className="absolute inset-0 bg-black/30" onClick={()=> setPbfOpen(false)} />
-          <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-4 overflow-y-auto">
+          <div className="absolute inset-0 bg-black/30" onClick={()=> setMasterOpen(false)} />
+          <div className="absolute right-0 top-0 h-full w-full max-w-3xl bg-white shadow-xl p-4 overflow-y-auto">
             <div className="flex items-center gap-2 mb-3">
-              <h3 className="text-lg font-semibold">Kelola Template PBF</h3>
+              <h3 className="text-lg font-semibold">Kelola Master Item</h3>
               <div className="ml-auto flex gap-2">
-                {/* ====== Tombol sinkron PBF ke Google Sheets ====== */}
+                {/* Tarik dari Google Sheets (endpoint opsional) */}
                 <button
-                  onClick={async () => {
+                  onClick={async ()=> {
                     try {
-                      const r = await fetch("/.netlify/functions/sheets-pbf", {
-                        headers: API_KEY_HEADER ? API_KEY_HEADER : {}
-                      });
+                      const r = await fetch("/.netlify/functions/sheets-master-items", { headers: API_KEY_HEADER || {} });
                       const data = await r.json();
                       if (!r.ok) throw new Error(data?.error || "Gagal memuat");
-                      if (Array.isArray(data.templates)) setPbfTemplates(data.templates);
-                      alert("Berhasil tarik Template PBF dari Google Sheets.");
-                    } catch (e:any) {
-                      alert("Gagal tarik dari Sheets: " + (e?.message || String(e)));
-                    }
+                      if (Array.isArray(data.items)) setMasterItems(data.items);
+                      alert("Berhasil tarik Master Item dari Google Sheets.");
+                    } catch(e:any){ alert("Gagal tarik: " + (e?.message || String(e))); }
                   }}
                   className="px-3 py-2 border rounded-lg text-sm"
                 >
                   Tarik dari Sheets
                 </button>
-
+                {/* Kirim ke Google Sheets (endpoint opsional) */}
                 <button
-                  onClick={async () => {
+                  onClick={async ()=> {
                     try {
-                      const res = await fetch("/.netlify/functions/sheets-pbf", {
+                      const r = await fetch("/.netlify/functions/sheets-master-items", {
                         method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                          ...(API_KEY_HEADER || {})
-                        },
-                        body: JSON.stringify({ templates: pbfTemplates }),
+                        headers: { "Content-Type": "application/json", ...(API_KEY_HEADER || {}) },
+                        body: JSON.stringify({ items: masterItems })
                       });
-                      const data = await res.json();
-                      if (!res.ok) throw new Error(data?.error || "Gagal simpan");
-                      alert("Berhasil kirim Template PBF ke Google Sheets.");
-                    } catch (e:any) {
-                      alert("Gagal kirim ke Sheets: " + (e?.message || String(e)));
-                    }
+                      const data = await r.json();
+                      if (!r.ok) throw new Error(data?.error || "Gagal simpan");
+                      alert("Berhasil kirim Master Item ke Google Sheets.");
+                    } catch(e:any){ alert("Gagal simpan: " + (e?.message || String(e))); }
                   }}
                   className="px-3 py-2 border rounded-lg text-sm"
                 >
                   Kirim ke Sheets
                 </button>
-
-                <button onClick={()=> setPbfOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
+                <button onClick={()=> setMasterOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
               </div>
             </div>
-            {pbfTemplates.length===0 && <p className="text-sm text-gray-600">Belum ada template. Isi data PBF lalu klik <b>Simpan sebagai Template</b>, atau <b>Tarik dari Sheets</b>.</p>}
-            <div className="space-y-3">
-              {pbfTemplates.map((t,i)=> (
-                <div key={i} className="border rounded-xl p-3 text-sm grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
-                  <Input label="Nama" value={t.nama} onChange={(v:string)=> renamePbfTemplate(i,'nama',v)} />
-                  <Input label="Telepon" value={t.telp} onChange={(v:string)=> renamePbfTemplate(i,'telp',v)} />
-                  <Input label="Alamat" className="md:col-span-3" value={t.alamat} onChange={(v:string)=> renamePbfTemplate(i,'alamat',v)} />
-                  <div className="md:col-span-3 flex justify-end gap-2">
-                    <button onClick={()=> applyPbfTemplate(i)} className="px-2 py-1 border rounded-lg text-xs">Gunakan</button>
-                    <button onClick={()=> deletePbfTemplate(i)} className="px-2 py-1 border rounded-lg text-xs">Hapus</button>
+
+            {/* Form tambah */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
+              <Input label="Nama" value={mNama} onChange={setMNama} />
+              <Input label="Zat Aktif" value={mZat} onChange={setMZat} />
+              <Input label="Bentuk & Kekuatan" value={mForm} onChange={setMForm} />
+              <div className="flex gap-2 items-end">
+                <Input label="Satuan" value={mSat} onChange={setMSat} className="w-full" />
+                <button onClick={addMaster} className="h-10 px-3 py-2 border rounded-lg text-sm">Tambah</button>
+              </div>
+            </div>
+
+            {/* Daftar master */}
+            <div className="space-y-2">
+              {masterItems.length === 0 && <div className="text-sm text-gray-600">Belum ada data master.</div>}
+              {masterItems.map((m,i)=> (
+                <div key={i} className="border rounded-xl p-3 grid grid-cols-1 md:grid-cols-5 gap-2 items-end text-sm">
+                  <Input label="Nama" value={m.nama} onChange={(v:string)=> updMaster(i,'nama',v)} />
+                  <Input label="Zat Aktif" value={m.zatAktif||""} onChange={(v:string)=> updMaster(i,'zatAktif',v)} />
+                  <Input label="Bentuk & Kekuatan" value={m.bentukKekuatan||""} onChange={(v:string)=> updMaster(i,'bentukKekuatan',v)} />
+                  <Input label="Satuan" value={m.satuan||""} onChange={(v:string)=> updMaster(i,'satuan',v)} />
+                  <div className="flex justify-end">
+                    <button onClick={()=> delMaster(i)} className="px-2 py-1 border rounded-lg text-xs">Hapus</button>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-3 flex items-center gap-2">
-              <button onClick={saveCurrentPbfAsTemplate} className="px-3 py-2 border rounded-lg text-sm">Simpan sebagai Template</button>
-            </div>
+
+            <p className="mt-4 text-xs text-gray-500">Catatan: Master Item tersimpan lokal (browser ini). Tombol Sheets hanya bekerja bila fungsi <code>/.netlify/functions/sheets-master-items</code> tersedia.</p>
           </div>
         </div>
       )}
@@ -926,4 +914,43 @@ export default function App() {
       )}
     </div>
   );
+}
+
+/** ====== Sub-komponen kecil untuk panel Zat ====== */
+function ZatPanel({ title, list, setList }: { title: string; list: string[]; setList: (updater: any)=>void }) {
+  const [baru, setBaru] = useState("");
+  function add(){ const v=baru.trim(); if(!v) return; setList((p:string[]) => dedup([...p, v])); setBaru(""); }
+  function del(i:number){ setList((p:string[]) => p.filter((_:any,idx:number)=> idx!==i)); }
+  function ren(i:number, val:string){ setList((p:string[]) => { const c=p.slice(); c[i]=val; return dedup(c); }); }
+  return (
+    <div>
+      <h4 className="font-medium mb-2">{title} (Tambah/Ubah)</h4>
+      <div className="flex gap-2 mb-3">
+        <input value={baru} onChange={(e)=> setBaru((e.target as HTMLInputElement).value)} placeholder={"Tambah "+title.toLowerCase()+"..."} className="flex-1 rounded-xl border px-3 py-2 text-sm" />
+        <button onClick={add} className="px-3 py-2 border rounded-lg text-sm">Tambah</button>
+      </div>
+      <div className="space-y-2">
+        {(list||[]).length===0 && <div className="text-xs text-gray-500">Belum ada item.</div>}
+        {(list||[]).map((v:string,i:number)=> (
+          <div key={i} className="flex items-center gap-2">
+            <input value={v} onChange={(e)=> ren(i, (e.target as HTMLInputElement).value)} className="flex-1 rounded-xl border px-3 py-2 text-sm" />
+            <button onClick={()=> del(i)} className="px-2 py-2 border rounded-lg text-xs">Hapus</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// helper untuk ZatPanel
+function dedup(list: any[]) {
+  const s: Record<string, boolean> = {};
+  const out: any[] = [];
+  for (let i=0;i<(list||[]).length;i++){
+    const v=String(list[i]||"").trim();
+    if(!v) continue;
+    const k=v.toLowerCase();
+    if(!s[k]){ s[k]=true; out.push(v); }
+  }
+  return out;
 }
