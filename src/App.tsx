@@ -80,12 +80,26 @@ export default function App() {
   `}</style>
   );
 
-  /** ====== (TAMBAHAN) CSS layar agar tak “terpotong”) ====== */
+  /** ====== (TAMBAHAN) CSS untuk tampilan layar biar tidak “terpotong” ====== */
   const ScreenCSS = (
     <style>{`
-      .print-page { max-width: 186mm; margin: 0 auto; overflow: visible; }
-      .print-page table { table-layout: fixed; width: 100%; }
-      .print-page th, .print-page td { word-break: break-word; }
+      /* Kontainer preview di layar bisa scroll horizontal kalau kolom sempit */
+      .screen-preview {
+        overflow-x: auto;
+      }
+      /* Samakan lebar dengan A4 area yang dipakai saat print */
+      .print-page {
+        width: 186mm;
+        margin: 0 auto;
+        overflow: visible;
+      }
+      .print-page table {
+        table-layout: fixed;
+        width: 100%;
+      }
+      .print-page th, .print-page td {
+        word-break: break-word;
+      }
     `}</style>
   );
 
@@ -387,6 +401,7 @@ export default function App() {
 
   /** ====== API KEY OPSIONAL (untuk secure fungsi PBF) ====== */
   const API_KEY_HEADER: Record<string, string> | undefined = undefined;
+  // Jika kamu set env API_KEY di Netlify, aktifkan baris berikut:
   // const API_KEY_HEADER = { "x-api-key": "ISI_SAMA_DENGAN_ENV_API_KEY" };
 
   return (
@@ -426,7 +441,7 @@ export default function App() {
             </div>
           </Card>
 
-          {/* Nomor SP */}
+          {/* Nomor SP (dipindah keluar mode fokus, di bawah Jenis PO) */}
           <Card title="Nomor SP & Status">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end text-[0.95rem]">
               <Input label="Nomor SP" value={header.nomorSP} onChange={(v:string)=> setHeader((h:any)=> ({...h, nomorSP:v}))} />
@@ -443,7 +458,7 @@ export default function App() {
               Status lokal: {isSpUsedLocal ? <span className="text-red-600">Duplikat</span> : <span className="text-green-700">Unik</span>}
               {hasSheets && (<>
                 {' · '}<button onClick={()=> checkSpUniqueRemote(header.nomorSP)} className="underline">Cek unik ke Sheets</button>
-                {spRemoteStatus && <> — {spRemoteStatus}</> }
+                {spRemoteStatus && <> — {spRemoteStatus}</>}
               </>)}
             </div>
           </Card>
@@ -522,15 +537,6 @@ export default function App() {
             <div className="flex items-center justify-between mb-2">
               <div className="text-xs text-gray-600">Kelola item</div>
               <div className="flex gap-2">
-                {/* Tombol tambahan agar panel zat mudah diakses dari sini */}
-                <button
-                  onClick={() => setZOpen(true)}
-                  className="text-xs px-2 py-1 border rounded-lg"
-                  title="Kelola daftar Zat Aktif (Prekursor & OOT)"
-                >
-                  Kelola Zat
-                </button>
-
                 <button onClick={()=> setFavOpen(true)} className="text-xs px-2 py-1 border rounded-lg">Tambah dari Favorit</button>
                 <button onClick={addRow} className="text-xs px-2 py-1 border rounded-lg">Tambah Baris</button>
               </div>
@@ -575,52 +581,52 @@ export default function App() {
 
         {/* ===== PREVIEW / CETAK ===== */}
         <section>
-          <div id="po-print" className="print-page bg-white shadow-sm rounded-2xl p-6">
-            {/* KOP */}
-            <div className="flex items-start gap-4">
-              {header.logoUrl ? (
-                <img src={header.logoUrl} alt="Logo" className="w-16 h-16 rounded-full object-contain border" />
-              ) : (
-                <div className="shrink-0 w-16 h-16 rounded-full border grid place-items-center text-xs text-gray-500">LOGO</div>
-              )}
-              <div className="grow">
-                <h2 className="font-semibold text-xl tracking-wide">{header.namaFaskes}</h2>
-                <p className="text-sm leading-snug">{header.izin}<br/>{header.alamat}<br/>{header.telp}</p>
+          <div className="screen-preview">
+            <div id="po-print" className="print-page bg-white shadow-sm rounded-2xl p-6">
+              {/* KOP */}
+              <div className="flex items-start gap-4">
+                {header.logoUrl ? (
+                  <img src={header.logoUrl} alt="Logo" className="w-16 h-16 rounded-full object-contain border" />
+                ) : (
+                  <div className="shrink-0 w-16 h-16 rounded-full border grid place-items-center text-xs text-gray-500">LOGO</div>
+                )}
+                <div className="grow">
+                  <h2 className="font-semibold text-xl tracking-wide">{header.namaFaskes}</h2>
+                  <p className="text-sm leading-snug">{header.izin}<br/>{header.alamat}<br/>{header.telp}</p>
+                </div>
+                <div className="ml-auto text-right">
+                  <div className="text-2xl font-extrabold leading-tight">{header.judul || 'SURAT PESANAN'}</div>
+                  <div className="text-xl font-bold tracking-wide">{typeUpper(poType)}</div>
+                </div>
               </div>
-              <div className="ml-auto text-right">
-                <div className="text-2xl font-extrabold leading-tight">{header.judul || 'SURAT PESANAN'}</div>
-                <div className="text-xl font-bold tracking-wide">{typeUpper(poType)}</div>
+              {line}
+
+              <div className="text-center text-sm">
+                <div><span className="font-medium">Nomor SP : </span><span>{header.nomorSP}</span></div>
               </div>
-            </div>
-            {line}
 
-            <div className="text-center text-sm">
-              <div><span className="font-medium">Nomor SP : </span><span>{header.nomorSP}</span></div>
-            </div>
-
-            {/* PEMESAN */}
-            <div className="mt-4 text-sm space-y-1">
-              <p><span className="inline-block w-56">Yang bertanda tangan di bawah ini</span>:</p>
-              <div className="grid grid-cols-[auto_1fr] gap-x-2">
-                <span>Nama</span><span>: {pemesan.nama}</span>
-                <span>Jabatan</span><span>: {pemesan.jabatan}</span>
-                <span>Nomor SIPA</span><span>: {pemesan.sipa}</span>
+              {/* PEMESAN */}
+              <div className="mt-4 text-sm space-y-1">
+                <p><span className="inline-block w-56">Yang bertanda tangan di bawah ini</span>:</p>
+                <div className="grid grid-cols-[auto_1fr] gap-x-2">
+                  <span>Nama</span><span>: {pemesan.nama}</span>
+                  <span>Jabatan</span><span>: {pemesan.jabatan}</span>
+                  <span>Nomor SIPA</span><span>: {pemesan.sipa}</span>
+                </div>
               </div>
-            </div>
 
-            {/* TUJUAN */}
-            <div className="mt-4 text-sm space-y-1">
-              <p>Mengajukan pesanan obat kepada :</p>
-              <div className="grid grid-cols-[auto_1fr] gap-x-2">
-                <span>Nama PBF</span><span>: {pbf.nama}</span>
-                <span>Alamat</span><span>: {pbf.alamat}</span>
-                <span>Telp.</span><span>: {pbf.telp || '-'}</span>
+              {/* TUJUAN */}
+              <div className="mt-4 text-sm space-y-1">
+                <p>Mengajukan pesanan obat kepada :</p>
+                <div className="grid grid-cols-[auto_1fr] gap-x-2">
+                  <span>Nama PBF</span><span>: {pbf.nama}</span>
+                  <span>Alamat</span><span>: {pbf.alamat}</span>
+                  <span>Telp.</span><span>: {pbf.telp || '-'}</span>
+                </div>
               </div>
-            </div>
 
-            {/* TABEL */}
-            <div className="mt-4">
-              <div className="overflow-x-auto -mx-2 px-2">
+              {/* TABEL */}
+              <div className="mt-4">
                 <table className="w-full text-xs border border-black table-fixed">
                   <thead>
                     <tr className="bg-gray-100">
@@ -648,63 +654,72 @@ export default function App() {
                   </tbody>
                 </table>
               </div>
-            </div>
 
-            {/* KEBUTUHAN */}
-            <div className="mt-4 text-sm space-y-1">
-              <p>Obat tersebut akan digunakan untuk memenuhi kebutuhan :</p>
-              <div className="grid grid-cols-[auto_1fr] gap-x-2">
-                <span>Nama Klinik</span><span>: {kebutuhan.namaKlinik}</span>
-                <span>Alamat</span><span>: {kebutuhan.alamat}</span>
-                <span>No. Izin</span><span>: {kebutuhan.noIzin}</span>
-              </div>
-            </div>
-
-            {/* TANDA TANGAN */}
-            <div className="mt-8 text-sm">
-              <div className="flex justify-end">
-                <div className="w-80 text-center avoid-break">
-                  <p>{tanggalTempat.tempat}, {tanggalTempat.tanggal}</p>
-                  <p>Pemesan</p>
-
-                  {header.ttdUrl ? (
-                    <div
-                      className={`${dragging ? 'select-none' : ''}`}
-                      style={{ position: 'relative', height: `${header.ttdAreaHeightMm}mm`, overflow: 'visible' }}
-                      onMouseMove={onSigMouseMove}
-                      onMouseUp={onSigMouseUp}
-                      onMouseLeave={onSigMouseUp}
-                      title="Drag untuk memindahkan tanda tangan"
-                    >
-                      <div
-                        onMouseDown={onSigMouseDown}
-                        style={{
-                          position: 'absolute',
-                          left: `${header.ttdX}px`,
-                          top:  `${header.ttdY}px`,
-                          transform: `translate(-50%, -50%) scale(${header.ttdScale})`,
-                          cursor: 'move',
-                        }}
-                      >
-                        <img
-                          src={header.ttdUrl}
-                          alt="Tanda tangan"
-                          style={{ maxHeight: `${header.ttdHeightMm}mm`, maxWidth: '100%', objectFit: 'contain', display: 'block' }}
-                          draggable={false}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ height: `${header.ttdAreaHeightMm}mm` }} />
-                  )}
-
-                  <p className="font-semibold">{pemesan.nama}</p>
-                  <p className="text-xs">SIPA : {pemesan.sipa}</p>
+              {/* KEBUTUHAN */}
+              <div className="mt-4 text-sm space-y-1">
+                <p>Obat tersebut akan digunakan untuk memenuhi kebutuhan :</p>
+                <div className="grid grid-cols-[auto_1fr] gap-x-2">
+                  <span>Nama Klinik</span><span>: {kebutuhan.namaKlinik}</span>
+                  <span>Alamat</span><span>: {kebutuhan.alamat}</span>
+                  <span>No. Izin</span><span>: {kebutuhan.noIzin}</span>
                 </div>
               </div>
-            </div>
 
-            {netStatus && <p className="mt-4 text-xs text-gray-600">{netStatus}</p>}
+              {/* TANDA TANGAN (overlay; jarak tetap & pendek) */}
+              <div className="mt-8 text-sm">
+                <div className="flex justify-end">
+                  <div className="w-80 text-center avoid-break">
+                    <p>{tanggalTempat.tempat}, {tanggalTempat.tanggal}</p>
+                    <p>Pemesan</p>
+
+                    {header.ttdUrl ? (
+                      <div
+                        className={`${dragging ? 'select-none' : ''}`}
+                        style={{
+                          position: 'relative',
+                          height: `${header.ttdAreaHeightMm}mm`,
+                          overflow: 'visible',
+                        }}
+                        onMouseMove={onSigMouseMove}
+                        onMouseUp={onSigMouseUp}
+                        onMouseLeave={onSigMouseUp}
+                        title="Drag untuk memindahkan tanda tangan"
+                      >
+                        <div
+                          onMouseDown={onSigMouseDown}
+                          style={{
+                            position: 'absolute',
+                            left: `${header.ttdX}px`,
+                            top:  `${header.ttdY}px`,
+                            transform: `translate(-50%, -50%) scale(${header.ttdScale})`,
+                            cursor: 'move',
+                          }}
+                        >
+                          <img
+                            src={header.ttdUrl}
+                            alt="Tanda tangan"
+                            style={{
+                              maxHeight: `${header.ttdHeightMm}mm`,
+                              maxWidth: '100%',
+                              objectFit: 'contain',
+                              display: 'block'
+                            }}
+                            draggable={false}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ height: `${header.ttdAreaHeightMm}mm` }} />
+                    )}
+
+                    <p className="font-semibold">{pemesan.nama}</p>
+                    <p className="text-xs">SIPA : {pemesan.sipa}</p>
+                  </div>
+                </div>
+              </div>
+
+              {netStatus && <p className="mt-4 text-xs text-gray-600">{netStatus}</p>}
+            </div>
           </div>
         </section>
       </div>
@@ -717,59 +732,11 @@ export default function App() {
           <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-4 overflow-y-auto">
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-lg font-semibold">Kelola Zat Aktif</h3>
-              <div className="ml-auto flex flex-wrap gap-2">
-                {/* Tarik dari Google Sheets */}
-                <button
-                  onClick={async () => {
-                    try {
-                      const [preR, ootR] = await Promise.all([
-                        fetch("/.netlify/functions/zat-master?action=pull&type=pre"),
-                        fetch("/.netlify/functions/zat-master?action=pull&type=oot"),
-                      ]);
-                      const pre = await preR.json();
-                      const oot = await ootR.json();
-                      if (!Array.isArray(pre?.list) || !Array.isArray(oot?.list)) throw new Error("Format tak valid");
-                      setPreList(pre.list);
-                      setOotList(oot.list);
-                      alert("Berhasil tarik Zat_Pre & Zat_OOT dari Sheets.");
-                    } catch (e:any) {
-                      alert("Gagal tarik: " + (e?.message || String(e)));
-                    }
-                  }}
-                  className="px-3 py-2 border rounded-lg text-sm"
-                >
-                  Tarik dari Sheets
-                </button>
-
-                {/* Kirim ke Google Sheets */}
-                <button
-                  onClick={async () => {
-                    try {
-                      const up = async (type: "pre" | "oot", list: string[]) => {
-                        const r = await fetch("/.netlify/functions/zat-master?action=push&type=" + type, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ list }),
-                        });
-                        const data = await r.json();
-                        if (!r.ok || data?.error) throw new Error(data?.error || "Gagal push " + type);
-                      };
-                      await Promise.all([ up("pre", preList || []), up("oot", ootList || []) ]);
-                      alert("Berhasil kirim Zat_Pre & Zat_OOT ke Sheets.");
-                    } catch (e:any) {
-                      alert("Gagal kirim: " + (e?.message || String(e)));
-                    }
-                  }}
-                  className="px-3 py-2 border rounded-lg text-sm"
-                >
-                  Kirim ke Sheets
-                </button>
-
+              <div className="ml-auto flex gap-2">
                 <button onClick={resetZat} className="px-3 py-2 border rounded-lg text-sm">Reset ke Default</button>
                 <button onClick={()=> setZOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
               </div>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <h4 className="font-medium mb-2">Prekursor (Tambah/Ubah)</h4>
@@ -848,6 +815,7 @@ export default function App() {
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-lg font-semibold">Kelola Template PBF</h3>
               <div className="ml-auto flex gap-2">
+                {/* ====== Tombol sinkron PBF ke Google Sheets ====== */}
                 <button
                   onClick={async () => {
                     try {
