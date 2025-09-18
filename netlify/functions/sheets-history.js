@@ -1,33 +1,50 @@
 // netlify/functions/sheets-history.js
-import { getSheets } from "./_sheetsClient.js";
+import { getSheets } from "./_sheetsClient.mjs"; // <- pakai .mjs sesuai repo kamu
 
-export async function handler() {
+export default async function handler(req, res) {
   try {
-    const SHEET_ID = process.env.SHEET_ID;
-    const SHEET_TAB = process.env.SHEET_TAB || "Data";
-    if (!SHEET_ID) {
-      return { statusCode: 500, body: JSON.stringify({ error: "Missing SHEET_ID" }) };
+    const sheets = await getSheets();
+    const sheetId = process.env.SHEET_ID;
+    const tab = process.env.SHEET_TAB || "rekap"; // pastikan sesuai
+    if (!sheetId) {
+      res.statusCode = 500;
+      return res.end(JSON.stringify({ error: "SHEET_ID env tidak di-set" }));
     }
 
-    const sheets = getSheets();
+    // Ambil A:E (tanggal, nomorSP, jenis, ringkasan, json)
+    const range = `'${tab}'!A:E`;
     const resp = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: `${SHEET_TAB}!A:E`
+      spreadsheetId: sheetId,
+      range,
     });
 
-    const rows = (resp.data.values || [])
-      .slice(1) // skip header kalau ada
-      .map((r, idx) => ({
-        idx,
-        tanggal: r[0] || "",
-        nomorSP: r[1] || "",
-        jenis: r[2] || "",
-        ringkasan: r[3] || "",
-        json: r[4] || ""
-      }));
+    // Aman terhadap sheet kosong / tab salah
+    const rows = (resp && resp.data && Array.isArray(resp.data.values))
+      ? resp.data.values
+      : [];
 
-    return { statusCode: 200, body: JSON.stringify({ rows }) };
+    // Tidak ada data?
+    if (rows.length <= 1) {
+      // Tetap balas sukses dengan rows: []
+      res.setHeader("Content-Type", "application/json");
+      return res.end(JSON.stringify({ rows: [] }));
+    }
+
+    // Baris pertama header
+    const body = rows.slice(1).map((r, idx) => ({
+      idx,
+      tanggal: r[0] || "",
+      nomorSP: r[1] || "",
+      jenis: r[2] || "",
+      ringkasan: r[3] || "",
+      json: r[4] || "",
+    }));
+
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify({ rows: body }));
   } catch (e) {
-    return { statusCode: 500, body: JSON.stringify({ error: String(e.message || e) }) };
+    res.statusCode = 500;
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify({ error: e?.message || String(e) }));
   }
 }
