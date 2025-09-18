@@ -80,22 +80,12 @@ export default function App() {
   `}</style>
   );
 
-  /** ====== (TAMBAHAN) CSS untuk tampilan layar biar tidak “terpotong” ====== */
+  /** ====== (TAMBAHAN) CSS layar agar tak “terpotong”) ====== */
   const ScreenCSS = (
     <style>{`
-      /* Non-print screen helpers */
-      .print-page {
-        max-width: 186mm;      /* samakan dengan area A4 di print */
-        margin: 0 auto;
-        overflow: visible;
-      }
-      .print-page table {
-        table-layout: fixed;   /* biar kolom tidak meluber */
-        width: 100%;
-      }
-      .print-page th, .print-page td {
-        word-break: break-word;
-      }
+      .print-page { max-width: 186mm; margin: 0 auto; overflow: visible; }
+      .print-page table { table-layout: fixed; width: 100%; }
+      .print-page th, .print-page td { word-break: break-word; }
     `}</style>
   );
 
@@ -397,7 +387,6 @@ export default function App() {
 
   /** ====== API KEY OPSIONAL (untuk secure fungsi PBF) ====== */
   const API_KEY_HEADER: Record<string, string> | undefined = undefined;
-  // Jika kamu set env API_KEY di Netlify, aktifkan baris berikut:
   // const API_KEY_HEADER = { "x-api-key": "ISI_SAMA_DENGAN_ENV_API_KEY" };
 
   return (
@@ -437,7 +426,7 @@ export default function App() {
             </div>
           </Card>
 
-          {/* Nomor SP (dipindah keluar mode fokus, di bawah Jenis PO) */}
+          {/* Nomor SP */}
           <Card title="Nomor SP & Status">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end text-[0.95rem]">
               <Input label="Nomor SP" value={header.nomorSP} onChange={(v:string)=> setHeader((h:any)=> ({...h, nomorSP:v}))} />
@@ -454,7 +443,7 @@ export default function App() {
               Status lokal: {isSpUsedLocal ? <span className="text-red-600">Duplikat</span> : <span className="text-green-700">Unik</span>}
               {hasSheets && (<>
                 {' · '}<button onClick={()=> checkSpUniqueRemote(header.nomorSP)} className="underline">Cek unik ke Sheets</button>
-                {spRemoteStatus && <> — {spRemoteStatus}</>}
+                {spRemoteStatus && <> — {spRemoteStatus}</> }
               </>)}
             </div>
           </Card>
@@ -533,6 +522,15 @@ export default function App() {
             <div className="flex items-center justify-between mb-2">
               <div className="text-xs text-gray-600">Kelola item</div>
               <div className="flex gap-2">
+                {/* Tombol tambahan agar panel zat mudah diakses dari sini */}
+                <button
+                  onClick={() => setZOpen(true)}
+                  className="text-xs px-2 py-1 border rounded-lg"
+                  title="Kelola daftar Zat Aktif (Prekursor & OOT)"
+                >
+                  Kelola Zat
+                </button>
+
                 <button onClick={()=> setFavOpen(true)} className="text-xs px-2 py-1 border rounded-lg">Tambah dari Favorit</button>
                 <button onClick={addRow} className="text-xs px-2 py-1 border rounded-lg">Tambah Baris</button>
               </div>
@@ -622,7 +620,7 @@ export default function App() {
 
             {/* TABEL */}
             <div className="mt-4">
-              <div className="overflow-x-auto -mx-2 px-2">{/* << tambahan agar tidak terpotong di kanan */}
+              <div className="overflow-x-auto -mx-2 px-2">
                 <table className="w-full text-xs border border-black table-fixed">
                   <thead>
                     <tr className="bg-gray-100">
@@ -662,7 +660,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* TANDA TANGAN (overlay; jarak tetap & pendek) */}
+            {/* TANDA TANGAN */}
             <div className="mt-8 text-sm">
               <div className="flex justify-end">
                 <div className="w-80 text-center avoid-break">
@@ -672,11 +670,7 @@ export default function App() {
                   {header.ttdUrl ? (
                     <div
                       className={`${dragging ? 'select-none' : ''}`}
-                      style={{
-                        position: 'relative',
-                        height: `${header.ttdAreaHeightMm}mm`,
-                        overflow: 'visible',
-                      }}
+                      style={{ position: 'relative', height: `${header.ttdAreaHeightMm}mm`, overflow: 'visible' }}
                       onMouseMove={onSigMouseMove}
                       onMouseUp={onSigMouseUp}
                       onMouseLeave={onSigMouseUp}
@@ -695,12 +689,7 @@ export default function App() {
                         <img
                           src={header.ttdUrl}
                           alt="Tanda tangan"
-                          style={{
-                            maxHeight: `${header.ttdHeightMm}mm`,
-                            maxWidth: '100%',
-                            objectFit: 'contain',
-                            display: 'block'
-                          }}
+                          style={{ maxHeight: `${header.ttdHeightMm}mm`, maxWidth: '100%', objectFit: 'contain', display: 'block' }}
                           draggable={false}
                         />
                       </div>
@@ -728,11 +717,59 @@ export default function App() {
           <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-4 overflow-y-auto">
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-lg font-semibold">Kelola Zat Aktif</h3>
-              <div className="ml-auto flex gap-2">
+              <div className="ml-auto flex flex-wrap gap-2">
+                {/* Tarik dari Google Sheets */}
+                <button
+                  onClick={async () => {
+                    try {
+                      const [preR, ootR] = await Promise.all([
+                        fetch("/.netlify/functions/zat-master?action=pull&type=pre"),
+                        fetch("/.netlify/functions/zat-master?action=pull&type=oot"),
+                      ]);
+                      const pre = await preR.json();
+                      const oot = await ootR.json();
+                      if (!Array.isArray(pre?.list) || !Array.isArray(oot?.list)) throw new Error("Format tak valid");
+                      setPreList(pre.list);
+                      setOotList(oot.list);
+                      alert("Berhasil tarik Zat_Pre & Zat_OOT dari Sheets.");
+                    } catch (e:any) {
+                      alert("Gagal tarik: " + (e?.message || String(e)));
+                    }
+                  }}
+                  className="px-3 py-2 border rounded-lg text-sm"
+                >
+                  Tarik dari Sheets
+                </button>
+
+                {/* Kirim ke Google Sheets */}
+                <button
+                  onClick={async () => {
+                    try {
+                      const up = async (type: "pre" | "oot", list: string[]) => {
+                        const r = await fetch("/.netlify/functions/zat-master?action=push&type=" + type, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ list }),
+                        });
+                        const data = await r.json();
+                        if (!r.ok || data?.error) throw new Error(data?.error || "Gagal push " + type);
+                      };
+                      await Promise.all([ up("pre", preList || []), up("oot", ootList || []) ]);
+                      alert("Berhasil kirim Zat_Pre & Zat_OOT ke Sheets.");
+                    } catch (e:any) {
+                      alert("Gagal kirim: " + (e?.message || String(e)));
+                    }
+                  }}
+                  className="px-3 py-2 border rounded-lg text-sm"
+                >
+                  Kirim ke Sheets
+                </button>
+
                 <button onClick={resetZat} className="px-3 py-2 border rounded-lg text-sm">Reset ke Default</button>
                 <button onClick={()=> setZOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
               </div>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <h4 className="font-medium mb-2">Prekursor (Tambah/Ubah)</h4>
@@ -811,7 +848,6 @@ export default function App() {
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-lg font-semibold">Kelola Template PBF</h3>
               <div className="ml-auto flex gap-2">
-                {/* ====== Tambahan tombol sinkron PBF ke Google Sheets ====== */}
                 <button
                   onClick={async () => {
                     try {
