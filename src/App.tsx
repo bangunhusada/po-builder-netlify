@@ -1,105 +1,30 @@
 
-function OrderTypeAndSPCard({
-  poType, setPoType,
-  header, setHeader,
-  spAuto, setSpAuto,
-  decrementSp, incrementSp,
-  isSpUsedLocal, spRemoteStatus, checkSpUniqueRemote,
-}: {
-  poType: string;
-  setPoType: (v: string) => void;
-  header: any;
-  setHeader: (fn: (h:any)=>any) => void;
-  spAuto: boolean;
-  setSpAuto: (v: boolean) => void;
-  decrementSp: () => void;
-  incrementSp: () => void;
-  isSpUsedLocal: boolean;
-  spRemoteStatus: string;
-  checkSpUniqueRemote: (num?: string)=>Promise<boolean>;
-}) {
-  return (
-    <Card title="Jenis PO · Nomor SP">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
-        <div className="lg:col-span-4">
-          <Select
-            label="Jenis PO"
-            value={poType}
-            onChange={setPoType}
-            options={["Reguler","Prekursor","Obat-obat tertentu"]}
-          />
-        </div>
-        <div className="lg:col-span-5">
-          <Input
-            label="Nomor SP"
-            value={header.nomorSP}
-            onChange={(v: string) => setHeader((h:any) => ({ ...h, nomorSP: v }))}
-            placeholder="NNN/SP/REG/MM/YYYY"
-          />
-          <div className="mt-1 text-[13px]">
-            <span className="text-gray-600">Status lokal: </span>
-            <span className={isSpUsedLocal ? "text-red-600 font-medium" : "text-emerald-600 font-medium"}>
-              {isSpUsedLocal ? "Duplikat" : "Belum pernah dipakai"}
-            </span>
-            <span className="text-gray-400"> · </span>
-            <button
-              type="button"
-              onClick={() => checkSpUniqueRemote(header.nomorSP)}
-              className="underline hover:opacity-80"
-              title="Periksa ke Google Sheets"
-            >
-              Cek unik ke Sheets
-            </button>
-            {spRemoteStatus && (
-              <>
-                <span className="text-gray-400"> — </span>
-                <span
-                  className={
-                    /unik/i.test(spRemoteStatus)
-                      ? "text-emerald-600"
-                      : /duplikat/i.test(spRemoteStatus)
-                      ? "text-red-600"
-                      : "text-gray-600"
-                  }
-                >
-                  {spRemoteStatus}
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-        <div className="lg:col-span-3 flex flex-col gap-2">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={spAuto}
-              onChange={(e) => setSpAuto((e.target as HTMLInputElement).checked)}
-            />
-            Nomor SP otomatis (per jenis)
-          </label>
-          <div className="flex gap-2">
-            <button onClick={decrementSp} className="px-3 py-2 rounded-xl border text-sm">Turunkan</button>
-            <button onClick={incrementSp} className="px-3 py-2 rounded-xl border text-sm">Naikkan</button>
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 import React, { useEffect, useMemo, useState } from "react";
 
 /** ============== UI PRIMITIVES ============== */
 function Card({ title, children }: any) {
   return (
-    <div className="bg-white rounded-2xl shadow p-4">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
       <div className="flex items-center gap-2 mb-3">
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border text-xs">i</span>
-        <h3 className="font-semibold">{title}</h3>
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border text-xs text-gray-500">i</span>
+        <h3 className="font-semibold tracking-tight">{title}</h3>
       </div>
       {children}
     </div>
   );
+}
+function Kbd({ k }: { k: string }) {
+  return <kbd className="px-1.5 py-0.5 text-[11px] rounded border bg-gray-50">{k}</kbd>;
+}
+function Pill({ children, tone = "gray" as any }: any) {
+  const map: any = {
+    gray: ["bg-gray-100", "text-gray-700"],
+    blue: ["bg-blue-100", "text-blue-700"],
+    emerald: ["bg-emerald-100", "text-emerald-700"],
+    red: ["bg-red-100", "text-red-700"],
+  };
+  const cls = (map[tone] || map.gray).join(" ");
+  return <span className={"inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] " + cls}>{children}</span>;
 }
 function Input({ label, value, onChange, className = "", type = "text", placeholder = "" }: any) {
   return (
@@ -140,9 +65,100 @@ function Select({ label, value, onChange, options, className = "" }: any) {
   );
 }
 
+/** ============== COMBINED CARD ============== */
+function OrderTypeAndSPCard({
+  poType, setPoType,
+  header, setHeader,
+  spAuto, setSpAuto,
+  decrementSp, incrementSp,
+  isSpUsedLocal, spRemoteStatus, checkSpUniqueRemote,
+}: {
+  poType: string;
+  setPoType: (v: string) => void;
+  header: any;
+  setHeader: (fn: (h:any)=>any) => void;
+  spAuto: boolean;
+  setSpAuto: (v: boolean) => void;
+  decrementSp: () => void;
+  incrementSp: () => void;
+  isSpUsedLocal: boolean;
+  spRemoteStatus: string;
+  checkSpUniqueRemote: (num?: string)=>Promise<boolean>;
+}) {
+  return (
+    <Card title="Jenis PO · Nomor SP">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+        <div className="lg:col-span-4">
+          <Select
+            label="Jenis PO"
+            value={poType}
+            onChange={setPoType}
+            options={["Reguler","Prekursor","Obat-obat tertentu"]}
+          />
+        </div>
+
+        <div className="lg:col-span-5">
+          <Input
+            label="Nomor SP"
+            value={header.nomorSP}
+            onChange={(v: string) => setHeader((h:any) => ({ ...h, nomorSP: v }))}
+            placeholder="NNN/SP/REG/MM/YYYY"
+          />
+          <div className="mt-1 text-[13px]">
+            <span className="text-gray-600">Status lokal: </span>
+            <span className={isSpUsedLocal ? "text-red-600 font-medium" : "text-emerald-600 font-medium"}>
+              {isSpUsedLocal ? "Duplikat" : "Belum pernah dipakai"}
+            </span>
+            <span className="text-gray-400"> · </span>
+            <button
+              type="button"
+              onClick={() => checkSpUniqueRemote(header.nomorSP)}
+              className="underline hover:opacity-80"
+              title="Periksa ke Google Sheets"
+            >
+              Cek unik ke Sheets
+            </button>
+            {spRemoteStatus && (
+              <>
+                <span className="text-gray-400"> — </span>
+                <span
+                  className={
+                    /unik/i.test(spRemoteStatus)
+                      ? "text-emerald-600"
+                      : /duplikat/i.test(spRemoteStatus)
+                      ? "text-red-600"
+                      : "text-gray-600"
+                  }
+                >
+                  {spRemoteStatus}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="lg:col-span-3 flex flex-col gap-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={spAuto}
+              onChange={(e) => setSpAuto((e.target as HTMLInputElement).checked)}
+            />
+            Nomor SP otomatis (per jenis)
+          </label>
+          <div className="flex gap-2">
+            <button onClick={decrementSp} className="px-3 py-2 rounded-xl border text-sm">Turunkan</button>
+            <button onClick={incrementSp} className="px-3 py-2 rounded-xl border text-sm">Naikkan</button>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 /** ============== APP (DEFAULT EXPORT) ============== */
 export default function App() {
-  /** ====== PRINT CSS (A4, clone-only) ====== */
+  /** ====== PRINT CSS (A4) ====== */
   const PrintCSS = (
     <style>{`
     @page { size: A4 portrait; margin: 12mm; }
@@ -150,29 +166,42 @@ export default function App() {
       html, body { visibility: hidden !important; margin: 0 !important; padding: 0 !important; }
       #po-print, #po-print * { visibility: visible !important; }
       #po-print {
-        position: absolute !important;
-        top: 0 !important; left: 0 !important; right: 0 !important;
+        position: static !important;
         margin: 0 auto !important;
         width: 186mm !important;
         padding: 0 !important;
         box-shadow: none !important;
         background: #fff !important;
-        page-break-after: avoid !important;
+        page-break-after: auto !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        overflow: visible !important;
       }
-      #po-print table { border-collapse: collapse !important; }
-      #po-print th, #po-print td { border: 1px solid #000 !important; }
-      #po-print, #po-print table, #po-print tr, #po-print img {
-        break-inside: avoid; page-break-inside: avoid;
-      }
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      #po-print table { border-collapse: collapse !important; page-break-inside: auto !important; table-layout: fixed !important; width: 100% !important; }
+      #po-print thead { display: table-header-group !important; }
+      #po-print tfoot { display: table-footer-group !important; }
+      #po-print th, #po-print td { border: 1px solid #000 !important; word-break: break-word !important; }
+      #po-print tr { break-inside: avoid-page !important; page-break-inside: avoid !important; }
+      #po-print .print-keep { break-inside: avoid-page !important; page-break-inside: avoid !important; page-break-after: avoid !important; }
+      .no-print, [data-fab], .floating, .fixed { display: none !important; }
     }
   `}</style>
   );
+  const ScreenCSS = (
+    <style>{`
+@media screen {
+  #po-print tbody tr:nth-child(odd){ background-color: rgba(249,250,251,.5); }
+  #po-print tbody tr:hover{ background-color: rgba(249,250,251,1); }
+  #po-print thead { position: sticky; top: 0; background: white; z-index: 1; }
+  .page-guide { background-image: linear-gradient(to bottom, transparent 0, transparent 296mm, rgba(0,0,0,.06) 296mm, rgba(0,0,0,.06) 297mm); background-size: 100% 297mm; }
+}
+    `}</style>
+  );
 
   /** ====== FLAGS ====== */
-  const hasSheets = true; // Netlify Functions untuk Google Sheets
+  const hasSheets = true;
 
-  /** ====== STATE UTAMA ====== */
+  /** ====== STATE ====== */
   const [poType, setPoType] = useState("Prekursor"); // Reguler | Prekursor | Obat-obat tertentu
   const [spAuto, setSpAuto] = useState(true);
   const [showMeta, setShowMeta] = useState(false);
@@ -185,7 +214,6 @@ export default function App() {
     judul: "SURAT PESANAN",
     nomorSP: "",
     logoUrl: "https://iili.io/KBiv0xa.png",
-    /** ===== TTD (gambar/scan) ===== */
     ttdUrl: "https://iili.io/KBb62lS.png",
     ttdHeightMm: 50,
     ttdAreaHeightMm: 18,
@@ -208,7 +236,7 @@ export default function App() {
     noIzin: "503/4736/83/DKS/2021",
   });
 
-  const [tanggalTempat, setTanggalTempat] = useState({
+  const [tanggalTempat] = useState({
     tempat: "Sleman",
     tanggal: new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" }),
   });
@@ -274,7 +302,7 @@ export default function App() {
     setHeader((h:any) => Object.assign({}, h, { nomorSP: makeSpNumber(next, now) }));
   }
 
-  /** ====== ZAT AKTIF (localStorage) ====== */
+  /** ====== ZAT AKTIF (lokal) ====== */
   const DEFAULT_PREKURSOR = [
     "Pseudoefedrin","Efedrin","Norefedrin","Ergometrin","Ergotamin","Anhidrida Asetat","Kalium Permanganat","Phenylpropanolamine HCl"
   ];
@@ -284,6 +312,24 @@ export default function App() {
   const [ootList, setOotList] = useState<string[]>(() => { try { const v=JSON.parse(localStorage.getItem("zat-oot-list")||"null"); if (Array.isArray(v) && v.length) return dedup(v);} catch{} return dedup(DEFAULT_OOT); });
   useEffect(() => { try { localStorage.setItem("zat-pre-list", JSON.stringify(preList)); } catch{} }, [preList]);
   useEffect(() => { try { localStorage.setItem("zat-oot-list", JSON.stringify(ootList)); } catch{} }, [ootList]);
+
+  /** ====== MASTER ZAT (via Netlify Function) ====== */
+  type MasterItem = { nama_obat: string; zat_aktif: string; bentuk_kekuatan?: string; satuan?: string; };
+  const [preMaster, setPreMaster] = useState<MasterItem[]>(() => { try { const v=JSON.parse(localStorage.getItem("master-pre")||"null"); if(Array.isArray(v)) return v; } catch{} return []; });
+  const [ootMaster, setOotMaster] = useState<MasterItem[]>(() => { try { const v=JSON.parse(localStorage.getItem("master-oot")||"null"); if(Array.isArray(v)) return v; } catch{} return []; });
+  useEffect(()=>{ try { localStorage.setItem("master-pre", JSON.stringify(preMaster)); } catch{} }, [preMaster]);
+  useEffect(()=>{ try { localStorage.setItem("master-oot", JSON.stringify(ootMaster)); } catch{} }, [ootMaster]);
+
+  async function pullMaster(type:'pre'|'oot'){
+    try{
+      const r = await fetch(`/.netlify/functions/zat-master?action=pull&type=${type}`);
+      const data = await r.json();
+      if(!r.ok) throw new Error(data?.error || "Gagal tarik master");
+      const rows: MasterItem[] = Array.isArray(data?.items) ? data.items : [];
+      if(type==='pre') setPreMaster(rows); else setOotMaster(rows);
+      alert(`Berhasil tarik Master ${type==='pre'?'Prekursor':'OOT'} dari Google Sheets (${rows.length} baris).`);
+    }catch(e:any){ alert("Gagal tarik: " + (e?.message || String(e))); }
+  }
 
   const optionsZatAktif = useMemo(() => {
     if (poType === "Prekursor") return preList;
@@ -296,6 +342,33 @@ export default function App() {
     for (let i=0;i<list.length;i++){ const x=list[i]; (base as any).push({ value: String(x), label: String(x) }); }
     return base;
   }, [optionsZatAktif]);
+
+  // Opsi "Dari Master" untuk baris item
+  const masterOptions = useMemo(() => {
+    const base = [{ value: "", label: "-- Dari Master (Nama + Zat) --" }];
+    const source = poType === "Prekursor" ? preMaster : poType === "Obat-obat tertentu" ? ootMaster : [];
+    for (let i=0;i<source.length;i++){
+      const m = source[i] || ({} as MasterItem);
+      const lab = [m.nama_obat || "-", m.zat_aktif ? `— ${m.zat_aktif}` : ""].join(" ").trim();
+      (base as any).push({ value: String(i), label: lab });
+    }
+    return base;
+  }, [poType, preMaster, ootMaster]);
+
+  function applyMasterToRow(rowIndex:number, idxStr:string){
+    const idx = parseInt(idxStr, 10);
+    if(isNaN(idx)) return;
+    const srcM = poType === "Prekursor" ? preMaster : poType === "Obat-obat tertentu" ? ootMaster : [];
+    const m = srcM[idx];
+    if(!m) return;
+    setItems(prev => prev.map((it,i)=> i!==rowIndex ? it : {
+      ...it,
+      nama: m.nama_obat || it.nama || "",
+      zatAktif: m.zat_aktif || it.zatAktif || "",
+      bentukKekuatan: m.bentuk_kekuatan ?? it.bentukKekuatan ?? "",
+      satuan: m.satuan ?? it.satuan ?? "",
+    }));
+  }
 
   /** ====== PANEL KELola LIST ====== */
   const [zOpen, setZOpen] = useState(false);
@@ -360,7 +433,7 @@ export default function App() {
   const [historyRows, setHistoryRows] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
-  function assemblePayload(){ return { poType, header, pemesan, pbf, kebutuhan, tanggalTempat, items, savedAt: new Date().toISOString() }; }
+  function assemblePayload(){ return { poType, header, pemesan, pbf, kebutuhan, items, savedAt: new Date().toISOString() }; }
   async function saveToGoogleSheets(){
     try {
       setNetStatus("Menyimpan...");
@@ -399,7 +472,6 @@ export default function App() {
         if (parsed.pemesan) setPemesan(parsed.pemesan);
         if (parsed.pbf) setPbf(parsed.pbf);
         if (parsed.kebutuhan) setKebutuhan(parsed.kebutuhan);
-        if (parsed.tanggalTempat) setTanggalTempat(parsed.tanggalTempat);
         if (parsed.items && parsed.items.length) setItems(parsed.items);
         setHistoryOpen(false);
       } else {
@@ -419,7 +491,6 @@ export default function App() {
       if (x >= 12) return angka[x-10]+" belas"; if (x===11) return "sebelas"; if (x===10) return "sepuluh"; return angka[x]; }
     const skala=["", "ribu", "juta", "miliar", "triliun"], parts:string[]=[]; let i=0; while(n>0){ const rem=n%1000; if(rem){ let ch=tigaDigit(rem); if(i===1 && rem===1) ch="seribu"; else if(i>0) ch+=" "+skala[i]; parts.unshift(ch); } n=Math.floor(n/1000); i++; } return parts.join(" "); }
   function capFirst(s:string){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; }
-  function formatJumlah(val:any){ const n=parseInt(val,10); if(!isFinite(n)) return val||""; return String(n)+" ("+capFirst(terbilangID(n))+")"; }
 
   /** ====== DRAG TTD ====== */
   const [dragging, setDragging] = useState(false);
@@ -436,13 +507,13 @@ export default function App() {
   }
   function onSigMouseUp() { setDragging(false); dragRef.current = null; }
 
-  /** ====== CETAK (clone supaya 1 halaman) ====== */
+  /** ====== CETAK ====== */
   const printDoc = () => {
     try {
       markSpUsedLocal(header.nomorSP);
-      const src = document.getElementById('po-print');
-      if (!src) { window.print(); return; }
-      const clone = src.cloneNode(true) as HTMLElement;
+      const srcEl = document.getElementById('po-print');
+      if (!srcEl) { window.print(); return; }
+      const clone = srcEl.cloneNode(true) as HTMLElement;
       clone.id = 'print-clone';
       document.body.appendChild(clone);
       document.body.classList.add('printing');
@@ -465,19 +536,15 @@ export default function App() {
   /** ====== UI ====== */
   const line = useMemo(() => <div className="w-full h-px bg-gray-400 my-2" />, []);
 
-  /** ====== API KEY OPSIONAL (untuk secure fungsi PBF) ====== */
-  const API_KEY_HEADER: Record<string, string> | undefined = undefined;
-  // Jika kamu set env API_KEY di Netlify, aktifkan baris berikut:
-  // const API_KEY_HEADER = { "x-api-key": "ISI_SAMA_DENGAN_ENV_API_KEY" };
-
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       {PrintCSS}
+      {ScreenCSS}
 
       {/* Toolbar */}
-      <div className="no-print sticky top-0 z-10 border-b bg-white/80 backdrop-blur px-4 py-3 flex items-center gap-2">
+      <div className="no-print sticky top-0 z-10 border-b bg-white/80 backdrop-blur px-4 py-3 flex items-center gap-2 flex-wrap">
         <h1 className="text-lg font-semibold">Purchase Order – Builder (Lengkap)</h1>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex gap-2 flex-wrap">
           <button onClick={newPO} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">PO Baru</button>
           <button onClick={addRow} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Tambah Baris</button>
           <button onClick={()=> setZOpen(true)} className="px-3 py-2 rounded-xl shadow text-sm border hover:bg-gray-50">Kelola Zat Aktif</button>
@@ -500,96 +567,38 @@ export default function App() {
             <button onClick={()=> setShowMeta(v=>!v)} className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50">{showMeta ? 'Sembunyikan' : 'Edit identitas'}</button>
           </div>
 
+          {/* === GABUNGAN: Jenis PO + Nomor SP === */}
           <OrderTypeAndSPCard
-  poType={poType}
-  setPoType={setPoType}
-  header={header}
-  setHeader={setHeader}
-  spAuto={spAuto}
-  setSpAuto={setSpAuto}
-  decrementSp={decrementSp}
-  incrementSp={incrementSp}
-  isSpUsedLocal={isSpUsedLocal}
-  spRemoteStatus={spRemoteStatus}
-  checkSpUniqueRemote={checkSpUniqueRemote}
-/>
+            poType={poType}
+            setPoType={setPoType}
+            header={header}
+            setHeader={setHeader}
+            spAuto={spAuto}
+            setSpAuto={setSpAuto}
+            decrementSp={decrementSp}
+            incrementSp={incrementSp}
+            isSpUsedLocal={isSpUsedLocal}
+            spRemoteStatus={spRemoteStatus}
+            checkSpUniqueRemote={checkSpUniqueRemote}
+          />
 
-          {showMeta && (
-            <Card title="Identitas Fasilitas Kesehatan">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input label="Judul Dokumen" value={header.judul} onChange={(v:string)=> setHeader((h:any)=> ({...h, judul:v}))} />
-                <Input label="Nama Faskes" value={header.namaFaskes} onChange={(v:string)=> setHeader((h:any)=> ({...h, namaFaskes:v}))} />
-                <Input label="Izin" value={header.izin} onChange={(v:string)=> setHeader((h:any)=> ({...h, izin:v}))} />
-                <Input label="Telp" value={header.telp} onChange={(v:string)=> setHeader((h:any)=> ({...h, telp:v}))} />
-                <Input label="Alamat" className="md:col-span-2" value={header.alamat} onChange={(v:string)=> setHeader((h:any)=> ({...h, alamat:v}))} />
-                <Input label="Logo URL (opsional)" className="md:col-span-2" value={header.logoUrl} onChange={(v:string)=> setHeader((h:any)=> ({...h, logoUrl:v}))} placeholder="https://.../logo.png" />
-                {/* TTD */}
-                <Input label="Tanda Tangan URL (opsional)" className="md:col-span-2" value={header.ttdUrl} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdUrl:v}))} placeholder="https://.../tanda-tangan.png" />
-                <Input label="Tinggi maksimal TTD (mm)" value={String(header.ttdHeightMm)} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdHeightMm: Math.max(10, Math.min(60, parseInt(v||'22',10) || 22))}))} type="number" />
-                <Input label="Tinggi ruang TTD (mm) — jarak Pemesan ↔ Nama" value={String(header.ttdAreaHeightMm)} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdAreaHeightMm: Math.max(10, Math.min(60, parseInt(v||'18',10) || 18))}))} type="number" />
-                <div className="md:col-span-2 grid grid-cols-3 gap-3">
-                  <Input label="Posisi X (px)" value={String(header.ttdX)} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdX: parseInt(v||'0',10) || 0}))} type="number" />
-                  <Input label="Posisi Y (px)" value={String(header.ttdY)} onChange={(v:string)=> setHeader((h:any)=> ({...h, ttdY: parseInt(v||'0',10) || 0}))} type="number" />
-                  <label className="block">
-                    <span className="text-xs text-gray-600">Scale (%)</span>
-                    <input
-                      type="range" min={50} max={200} step={1}
-                      value={Math.round((header.ttdScale ?? 1)*100)}
-                      onChange={(e)=> setHeader((h:any)=> ({...h, ttdScale: Math.max(0.5, Math.min(2, Number((e.target as HTMLInputElement).value)/100))}))}
-                      className="mt-1 w-full"
-                    />
-                    <div className="text-xs text-gray-600 mt-1">{Math.round((header.ttdScale ?? 1)*100)}%</div>
-                  </label>
-                </div>
-              </div>
-            </Card>
-          )}
-
-          {showMeta && (
-            <Card title="Pemesan">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input label="Nama" value={pemesan.nama} onChange={(v:string)=> setPemesan(p=> ({...p, nama:v}))} />
-                <Input label="Jabatan" value={pemesan.jabatan} onChange={(v:string)=> setPemesan(p=> ({...p, jabatan:v}))} />
-                <Input label="Nomor SIPA" className="md:col-span-2" value={pemesan.sipa} onChange={(v:string)=> setPemesan(p=> ({...p, sipa:v}))} />
-              </div>
-            </Card>
-          )}
-
-          {showMeta && (
-            <Card title="Kebutuhan Faskes">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input label="Nama Klinik" value={kebutuhan.namaKlinik} onChange={(v:string)=> setKebutuhan(k=> ({...k, namaKlinik:v}))} />
-                <Input label="No. Izin" value={kebutuhan.noIzin} onChange={(v:string)=> setKebutuhan(k=> ({...k, noIzin:v}))} />
-                <Input label="Alamat" className="md:col-span-2" value={kebutuhan.alamat} onChange={(v:string)=> setKebutuhan(k=> ({...k, alamat:v}))} />
-              </div>
-            </Card>
-          )}
-
+          {/* Tujuan PBF */}
           <Card title="Mengajukan pesanan obat kepada">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end mb-2">
-              <label className="block">
-                <span className="text-xs text-gray-600">Template PBF</span>
-                <select onChange={(e)=> { const i = parseInt((e.target as HTMLSelectElement).value,10); if(!isNaN(i) && i>=0) applyPbfTemplate(i); (e.target as HTMLSelectElement).value='-1'; }} defaultValue="-1" className="mt-1 w-full rounded-xl border px-3 py-2 text-sm bg-white">
-                  <option value="-1">-- Pilih Template --</option>
-                  {pbfTemplates.map((t:any,i:number)=> (<option key={i} value={i}>{t.nama||('Template '+(i+1))}</option>))}
-                </select>
-              </label>
-              <button onClick={saveCurrentPbfAsTemplate} className="px-3 py-2 rounded-xl border text-sm">Simpan sebagai Template</button>
-              <button onClick={()=> setPbfOpen(true)} className="px-3 py-2 rounded-xl border text-sm">Kelola Template</button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Input label="Nama PBF" value={pbf.nama} onChange={(v:string)=> setPbf({...pbf, nama:v})} />
               <Input label="Telepon" value={pbf.telp} onChange={(v:string)=> setPbf({...pbf, telp:v})} />
-              <Input label="Alamat" className="md:col-span-2" value={pbf.alamat} onChange={(v:string)=> setPbf({...pbf, alamat:v})} />
+              <Input label="Alamat" className="md:col-span-1" value={pbf.alamat} onChange={(v:string)=> setPbf({...pbf, alamat:v})} />
             </div>
           </Card>
 
+          {/* Daftar Item */}
           <Card title="Daftar Item">
             <div className="flex items-center justify-between mb-2">
               <div className="text-xs text-gray-600">Kelola item</div>
               <div className="flex gap-2">
                 <button onClick={()=> setFavOpen(true)} className="text-xs px-2 py-1 border rounded-lg">Tambah dari Favorit</button>
                 <button onClick={addRow} className="text-xs px-2 py-1 border rounded-lg">Tambah Baris</button>
+                <button onClick={()=> setZOpen(true)} className="text-xs px-2 py-1 border rounded-lg">Kelola Zat Aktif</button>
               </div>
             </div>
             <div className="space-y-4">
@@ -598,12 +607,24 @@ export default function App() {
                   <div className="col-span-12 md:col-span-4">
                     <Input label={`Nama Obat #${idx+1}`} placeholder="Nama Obat" value={it.nama} onChange={(v:string)=> handleItemChange(idx, 'nama', v)} />
                   </div>
-                  {showZatAktif && (
+
+                  {poType !== "Reguler" && (
+                    <div className="col-span-12 md:col-span-3">
+                      <Select
+                        label="Dari Master (opsional)"
+                        value={""}
+                        onChange={(v:string)=> applyMasterToRow(idx, v)}
+                        options={masterOptions}
+                      />
+                    </div>
+                  )}
+
+                  {poType !== "Reguler" && (
                     <div className="col-span-6 md:col-span-2">
                       <Select label="Zat Aktif" value={it.zatAktif || ''} onChange={(v:string)=> handleItemChange(idx, 'zatAktif', v)} options={zatOptions} />
                     </div>
                   )}
-                  <div className="col-span-6 md:col-span-3">
+                  <div className="col-span-6 md:col-span-2">
                     <Input label="Bentuk & Kekuatan" value={it.bentukKekuatan} onChange={(v:string)=> handleItemChange(idx, 'bentukKekuatan', v)} />
                   </div>
                   <div className="col-span-4 md:col-span-1">
@@ -631,7 +652,7 @@ export default function App() {
         </section>
 
         {/* ===== PREVIEW / CETAK ===== */}
-        <section>
+        <section className="page-guide">
           <div id="po-print" className="print-page bg-white shadow-sm rounded-2xl p-6">
             {/* KOP */}
             <div className="flex items-start gap-4">
@@ -655,16 +676,6 @@ export default function App() {
               <div><span className="font-medium">Nomor SP : </span><span>{header.nomorSP}</span></div>
             </div>
 
-            {/* PEMESAN */}
-            <div className="mt-4 text-sm space-y-1">
-              <p><span className="inline-block w-56">Yang bertanda tangan di bawah ini</span>:</p>
-              <div className="grid grid-cols-[auto_1fr] gap-x-2">
-                <span>Nama</span><span>: {pemesan.nama}</span>
-                <span>Jabatan</span><span>: {pemesan.jabatan}</span>
-                <span>Nomor SIPA</span><span>: {pemesan.sipa}</span>
-              </div>
-            </div>
-
             {/* TUJUAN */}
             <div className="mt-4 text-sm space-y-1">
               <p>Mengajukan pesanan obat kepada :</p>
@@ -682,7 +693,7 @@ export default function App() {
                   <tr className="bg-gray-100">
                     <th className="p-2 border border-black w-10">No</th>
                     <th className="p-2 border border-black">Nama Obat</th>
-                    {showZatAktif && <th className="p-2 border border-black">Zat Aktif</th>}
+                    {poType !== "Reguler" && <th className="p-2 border border-black">Zat Aktif</th>}
                     <th className="p-2 border border-black">Bentuk dan Kekuatan</th>
                     <th className="p-2 border border-black">Satuan</th>
                     <th className="p-2 border border-black">Jumlah</th>
@@ -694,7 +705,7 @@ export default function App() {
                     <tr key={i}>
                       <td className="p-2 border border-black text-center">{i + 1}</td>
                       <td className="p-2 border border-black text-left">{it.nama || ''}</td>
-                      {showZatAktif && <td className="p-2 border border-black text-left">{it.zatAktif || ''}</td>}
+                      {poType !== "Reguler" && <td className="p-2 border border-black text-left">{it.zatAktif || ''}</td>}
                       <td className="p-2 border border-black text-left">{it.bentukKekuatan || ''}</td>
                       <td className="p-2 border border-black text-center">{it.satuan || ''}</td>
                       <td className="p-2 border border-black text-center">{String(it.jumlah || '')}</td>
@@ -705,70 +716,10 @@ export default function App() {
               </table>
             </div>
 
-            {/* KEBUTUHAN */}
-            <div className="mt-4 text-sm space-y-1">
-              <p>Obat tersebut akan digunakan untuk memenuhi kebutuhan :</p>
-              <div className="grid grid-cols-[auto_1fr] gap-x-2">
-                <span>Nama Klinik</span><span>: {kebutuhan.namaKlinik}</span>
-                <span>Alamat</span><span>: {kebutuhan.alamat}</span>
-                <span>No. Izin</span><span>: {kebutuhan.noIzin}</span>
-              </div>
-            </div>
-
-            {/* TANDA TANGAN (overlay; jarak tetap & pendek) */}
-            <div className="mt-8 text-sm">
-              <div className="flex justify-end">
-                <div className="w-80 text-center avoid-break">
-                  <p>{tanggalTempat.tempat}, {tanggalTempat.tanggal}</p>
-                  <p>Pemesan</p>
-
-                  {header.ttdUrl ? (
-                    <div
-                      className={`${dragging ? 'select-none' : ''}`}
-                      style={{
-                        position: 'relative',
-                        height: `${header.ttdAreaHeightMm}mm`,
-                        overflow: 'visible',
-                      }}
-                      onMouseMove={onSigMouseMove}
-                      onMouseUp={onSigMouseUp}
-                      onMouseLeave={onSigMouseUp}
-                      title="Drag untuk memindahkan tanda tangan"
-                    >
-                      <div
-                        onMouseDown={onSigMouseDown}
-                        style={{
-                          position: 'absolute',
-                          left: `${header.ttdX}px`,
-                          top:  `${header.ttdY}px`,
-                          transform: `translate(-50%, -50%) scale(${header.ttdScale})`,
-                          cursor: 'move',
-                        }}
-                      >
-                        <img
-                          src={header.ttdUrl}
-                          alt="Tanda tangan"
-                          style={{
-                            maxHeight: `${header.ttdHeightMm}mm`,
-                            maxWidth: '100%',
-                            objectFit: 'contain',
-                            display: 'block'
-                          }}
-                          draggable={false}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ height: `${header.ttdAreaHeightMm}mm` }} />
-                  )}
-
-                  <p className="font-semibold">{pemesan.nama}</p>
-                  <p className="text-xs">SIPA : {pemesan.sipa}</p>
-                </div>
-              </div>
-            </div>
-
             {netStatus && <p className="mt-4 text-xs text-gray-600">{netStatus}</p>}
+            <p className="mt-2 text-[11px] text-gray-500">
+              Dibuat: {new Date().toLocaleString("id-ID")} · Operator: {typeof window!=="undefined" ? (localStorage.getItem("operatorName")||"-") : "-"}
+            </p>
           </div>
         </section>
       </div>
@@ -782,10 +733,13 @@ export default function App() {
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-lg font-semibold">Kelola Zat Aktif</h3>
               <div className="ml-auto flex gap-2">
-                <button onClick={resetZat} className="px-3 py-2 border rounded-lg text-sm">Reset ke Default</button>
+                <button onClick={()=> pullMaster('pre')} className="px-3 py-2 border rounded-lg text-sm">Tarik Prekursor dari Sheets</button>
+                <button onClick={()=> pullMaster('oot')} className="px-3 py-2 border rounded-lg text-sm">Tarik OOT dari Sheets</button>
+                <button onClick={resetZat} className="px-3 py-2 border rounded-lg text-sm">Reset daftar lokal</button>
                 <button onClick={()=> setZOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
               </div>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <h4 className="font-medium mb-2">Prekursor (Tambah/Ubah)</h4>
@@ -802,7 +756,31 @@ export default function App() {
                     </div>
                   ))}
                 </div>
+
+                {/* preview master */}
+                <div className="mt-4">
+                  <div className="text-xs text-gray-500 mb-1">Master Prekursor dari Sheets ({preMaster.length})</div>
+                  <div className="max-h-40 overflow-auto text-xs border rounded-lg">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="p-1 border">Nama</th>
+                          <th className="p-1 border">Zat</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {preMaster.map((m,i)=>(
+                          <tr key={i}>
+                            <td className="p-1 border">{m.nama_obat}</td>
+                            <td className="p-1 border">{m.zat_aktif}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
+
               <div>
                 <h4 className="font-medium mb-2">Obat-obat Tertentu (Tambah/Ubah)</h4>
                 <div className="flex gap-2 mb-3">
@@ -818,9 +796,33 @@ export default function App() {
                     </div>
                   ))}
                 </div>
+
+                {/* preview master */}
+                <div className="mt-4">
+                  <div className="text-xs text-gray-500 mb-1">Master OOT dari Sheets ({ootMaster.length})</div>
+                  <div className="max-h-40 overflow-auto text-xs border rounded-lg">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="p-1 border">Nama</th>
+                          <th className="p-1 border">Zat</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ootMaster.map((m,i)=>(
+                          <tr key={i}>
+                            <td className="p-1 border">{m.nama_obat}</td>
+                            <td className="p-1 border">{m.zat_aktif}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
               </div>
             </div>
-            <p className="mt-6 text-xs text-gray-500">Perubahan tersimpan otomatis di perangkat ini (localStorage).</p>
+            <p className="mt-6 text-xs text-gray-500">Master dikelola di Google Sheets tab <b>Zat_Pre</b> & <b>Zat_OOT</b>. Klik tombol “Tarik … dari Sheets” untuk memperbarui.</p>
           </div>
         </div>
       )}
@@ -856,81 +858,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Template PBF */}
-      {pbfOpen && (
-        <div className="fixed inset-0 z-40">
-          <div className="absolute inset-0 bg-black/30" onClick={()=> setPbfOpen(false)} />
-          <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl p-4 overflow-y-auto">
-            <div className="flex items-center gap-2 mb-3">
-              <h3 className="text-lg font-semibold">Kelola Template PBF</h3>
-              <div className="ml-auto flex gap-2">
-                {/* ====== Tambahan tombol sinkron PBF ke Google Sheets ====== */}
-                <button
-                  onClick={async () => {
-                    try {
-                      const r = await fetch("/.netlify/functions/sheets-pbf", {
-                        headers: API_KEY_HEADER ? API_KEY_HEADER : {}
-                      });
-                      const data = await r.json();
-                      if (!r.ok) throw new Error(data?.error || "Gagal memuat");
-                      if (Array.isArray(data.templates)) setPbfTemplates(data.templates);
-                      alert("Berhasil tarik Template PBF dari Google Sheets.");
-                    } catch (e:any) {
-                      alert("Gagal tarik dari Sheets: " + (e?.message || String(e)));
-                    }
-                  }}
-                  className="px-3 py-2 border rounded-lg text-sm"
-                >
-                  Tarik dari Sheets
-                </button>
-
-                <button
-                  onClick={async () => {
-                    try {
-                      const res = await fetch("/.netlify/functions/sheets-pbf", {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                          ...(API_KEY_HEADER || {})
-                        },
-                        body: JSON.stringify({ templates: pbfTemplates }),
-                      });
-                      const data = await res.json();
-                      if (!res.ok) throw new Error(data?.error || "Gagal simpan");
-                      alert("Berhasil kirim Template PBF ke Google Sheets.");
-                    } catch (e:any) {
-                      alert("Gagal kirim ke Sheets: " + (e?.message || String(e)));
-                    }
-                  }}
-                  className="px-3 py-2 border rounded-lg text-sm"
-                >
-                  Kirim ke Sheets
-                </button>
-
-                <button onClick={()=> setPbfOpen(false)} className="px-3 py-2 border rounded-lg text-sm">Tutup</button>
-              </div>
-            </div>
-            {pbfTemplates.length===0 && <p className="text-sm text-gray-600">Belum ada template. Isi data PBF lalu klik <b>Simpan sebagai Template</b>, atau <b>Tarik dari Sheets</b>.</p>}
-            <div className="space-y-3">
-              {pbfTemplates.map((t,i)=> (
-                <div key={i} className="border rounded-xl p-3 text-sm grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
-                  <Input label="Nama" value={t.nama} onChange={(v:string)=> renamePbfTemplate(i,'nama',v)} />
-                  <Input label="Telepon" value={t.telp} onChange={(v:string)=> renamePbfTemplate(i,'telp',v)} />
-                  <Input label="Alamat" className="md:col-span-3" value={t.alamat} onChange={(v:string)=> renamePbfTemplate(i,'alamat',v)} />
-                  <div className="md:col-span-3 flex justify-end gap-2">
-                    <button onClick={()=> applyPbfTemplate(i)} className="px-2 py-1 border rounded-lg text-xs">Gunakan</button>
-                    <button onClick={()=> deletePbfTemplate(i)} className="px-2 py-1 border rounded-lg text-xs">Hapus</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 flex items-center gap-2">
-              <button onClick={saveCurrentPbfAsTemplate} className="px-3 py-2 border rounded-lg text-sm">Simpan sebagai Template</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Riwayat */}
       {historyOpen && (
         <div className="fixed inset-0 z-40">
@@ -952,7 +879,6 @@ export default function App() {
                     <th className="p-2 border">Nomor SP</th>
                     <th className="p-2 border">Jenis</th>
                     <th className="p-2 border">Ringkasan</th>
-                    <th className="p-2 border">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -962,9 +888,6 @@ export default function App() {
                       <td className="p-2 border">{r.nomorSP}</td>
                       <td className="p-2 border">{r.jenis}</td>
                       <td className="p-2 border">{r.ringkasan}</td>
-                      <td className="p-2 border">
-                        <button onClick={()=> restoreFromRow(r)} className="px-2 py-1 border rounded-lg text-xs">Pulihkan</button>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
