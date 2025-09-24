@@ -6,6 +6,7 @@ function OrderTypeAndSPCard({
   decrementSp, incrementSp,
   isSpUsedLocal, spRemoteStatus, checkSpUniqueRemote,
 }: {
+	
   poType: string;
   setPoType: (v: string) => void;
   header: any;
@@ -19,56 +20,26 @@ function OrderTypeAndSPCard({
   checkSpUniqueRemote: (num?: string)=>Promise<boolean>;
 }) {
   return (
-    <Card title="Jenis PO · Nomor SP">
-      {/* 3 kolom: [Jenis PO] [Nomor SP + checkbox + status] [Aksi] */}
-      <div className="grid gap-4 md:grid-cols-[260px_1fr_auto] items-end">
-        {/* Jenis PO */}
-        <label className="block">
-          <span className="text-xs text-gray-600">Jenis PO</span>
-          <select
+    <Card title="Jenis dan Nomor SP">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+        <div className="lg:col-span-4">
+          <Select
+            label="Jenis PO"
             value={poType}
-            onChange={(e) => setPoType((e.target as HTMLSelectElement).value)}
-            className="mt-1 w-full rounded-xl border px-3 py-2 h-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black/20"
-          >
-            {["Reguler", "Prekursor", "Obat-obat tertentu"].map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
-        </label>
-
-        {/* Nomor SP + checkbox otomatis + status di bawahnya */}
-        <div className="min-w-0">
-          <label className="block">
-            <span className="text-xs text-gray-600">Nomor SP</span>
-            <div className="mt-1 flex items-center gap-3">
-              <input
-                value={header.nomorSP}
-                onChange={(e) =>
-                  setHeader((h: any) => ({ ...h, nomorSP: (e.target as HTMLInputElement).value }))
-                }
-                placeholder="NNN/SP/REG/MM/YYYY"
-                className="w-full rounded-xl border px-3 py-2 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-black/20"
-              />
-              <label className="shrink-0 flex items-center gap-2 whitespace-nowrap text-sm">
-                <input
-                  type="checkbox"
-                  checked={spAuto}
-                  onChange={(e) => setSpAuto((e.target as HTMLInputElement).checked)}
-                />
-                Nomor SP otomatis
-                <span className="hidden sm:inline">(per jenis)</span>
-              </label>
-            </div>
-          </label>
-
-          {/* Status baris kedua agar tidak memecah baris atas */}
+            onChange={setPoType}
+            options={["Reguler","Prekursor","Obat-obat tertentu"]}
+          />
+        </div>
+        <div className="lg:col-span-5">
+          <Input
+            label="Nomor SP"
+            value={header.nomorSP}
+            onChange={(v: string) => setHeader((h:any) => ({ ...h, nomorSP: v }))}
+            placeholder="NNN/SP/REG/MM/YYYY"
+          />
           <div className="mt-1 text-[13px]">
             <span className="text-gray-600">Status lokal: </span>
-            <span
-              className={
-                isSpUsedLocal ? "text-red-600 font-medium" : "text-emerald-600 font-medium"
-              }
-            >
+            <span className={isSpUsedLocal ? "text-red-600 font-medium" : "text-emerald-600 font-medium"}>
               {isSpUsedLocal ? "Duplikat" : "Belum pernah dipakai"}
             </span>
             <span className="text-gray-400"> · </span>
@@ -98,21 +69,24 @@ function OrderTypeAndSPCard({
             )}
           </div>
         </div>
-
-        {/* Aksi: Turunkan/Naikkan */}
-        <div className="flex gap-2 justify-end">
-          <button onClick={decrementSp} className="px-3 py-2 rounded-xl border text-sm">
-            Turunkan
-          </button>
-          <button onClick={incrementSp} className="px-3 py-2 rounded-xl border text-sm">
-            Naikkan
-          </button>
+        <div className="lg:col-span-3 flex flex-col gap-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={spAuto}
+              onChange={(e) => setSpAuto((e.target as HTMLInputElement).checked)}
+            />
+            Nomor SP otomatis (per jenis)
+          </label>
+          <div className="flex gap-2">
+            <button onClick={decrementSp} className="px-3 py-2 rounded-xl border text-sm">Turunkan</button>
+            <button onClick={incrementSp} className="px-3 py-2 rounded-xl border text-sm">Naikkan</button>
+          </div>
         </div>
       </div>
     </Card>
   );
 }
-
 
 import React, { useEffect, useMemo, useState } from "react";
 
