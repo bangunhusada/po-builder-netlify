@@ -1,3 +1,92 @@
+
+function OrderTypeAndSPCard({
+  poType, setPoType,
+  header, setHeader,
+  spAuto, setSpAuto,
+  decrementSp, incrementSp,
+  isSpUsedLocal, spRemoteStatus, checkSpUniqueRemote,
+}: {
+  poType: string;
+  setPoType: (v: string) => void;
+  header: any;
+  setHeader: (fn: (h:any)=>any) => void;
+  spAuto: boolean;
+  setSpAuto: (v: boolean) => void;
+  decrementSp: () => void;
+  incrementSp: () => void;
+  isSpUsedLocal: boolean;
+  spRemoteStatus: string;
+  checkSpUniqueRemote: (num?: string)=>Promise<boolean>;
+}) {
+  return (
+    <Card title="Jenis PO · Nomor SP">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+        <div className="lg:col-span-4">
+          <Select
+            label="Jenis PO"
+            value={poType}
+            onChange={setPoType}
+            options={["Reguler","Prekursor","Obat-obat tertentu"]}
+          />
+        </div>
+        <div className="lg:col-span-5">
+          <Input
+            label="Nomor SP"
+            value={header.nomorSP}
+            onChange={(v: string) => setHeader((h:any) => ({ ...h, nomorSP: v }))}
+            placeholder="NNN/SP/REG/MM/YYYY"
+          />
+          <div className="mt-1 text-[13px]">
+            <span className="text-gray-600">Status lokal: </span>
+            <span className={isSpUsedLocal ? "text-red-600 font-medium" : "text-emerald-600 font-medium"}>
+              {isSpUsedLocal ? "Duplikat" : "Belum pernah dipakai"}
+            </span>
+            <span className="text-gray-400"> · </span>
+            <button
+              type="button"
+              onClick={() => checkSpUniqueRemote(header.nomorSP)}
+              className="underline hover:opacity-80"
+              title="Periksa ke Google Sheets"
+            >
+              Cek unik ke Sheets
+            </button>
+            {spRemoteStatus && (
+              <>
+                <span className="text-gray-400"> — </span>
+                <span
+                  className={
+                    /unik/i.test(spRemoteStatus)
+                      ? "text-emerald-600"
+                      : /duplikat/i.test(spRemoteStatus)
+                      ? "text-red-600"
+                      : "text-gray-600"
+                  }
+                >
+                  {spRemoteStatus}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="lg:col-span-3 flex flex-col gap-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={spAuto}
+              onChange={(e) => setSpAuto((e.target as HTMLInputElement).checked)}
+            />
+            Nomor SP otomatis (per jenis)
+          </label>
+          <div className="flex gap-2">
+            <button onClick={decrementSp} className="px-3 py-2 rounded-xl border text-sm">Turunkan</button>
+            <button onClick={incrementSp} className="px-3 py-2 rounded-xl border text-sm">Naikkan</button>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 import React, { useEffect, useMemo, useState } from "react";
 
 /** ============== UI PRIMITIVES ============== */
@@ -411,33 +500,19 @@ export default function App() {
             <button onClick={()=> setShowMeta(v=>!v)} className="px-3 py-1.5 text-sm rounded-lg border bg-white hover:bg-gray-50">{showMeta ? 'Sembunyikan' : 'Edit identitas'}</button>
           </div>
 
-          <Card title="Jenis Purchase Order">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Select label="Jenis PO" value={poType} onChange={setPoType} options={["Reguler","Prekursor","Obat-obat tertentu"]} />
-            </div>
-          </Card>
-
-          {/* Nomor SP (dipindah keluar mode fokus, di bawah Jenis PO) */}
-          <Card title="Nomor SP & Status">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end text-[0.95rem]">
-              <Input label="Nomor SP" value={header.nomorSP} onChange={(v:string)=> setHeader((h:any)=> ({...h, nomorSP:v}))} />
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={spAuto} onChange={(e)=> setSpAuto((e.target as HTMLInputElement).checked)} />
-                Nomor SP otomatis (per jenis)
-              </label>
-              <div className="flex gap-2">
-                <button onClick={decrementSp} className="px-3 py-2 rounded-xl border text-sm">Turunkan</button>
-                <button onClick={incrementSp} className="px-3 py-2 rounded-xl border text-sm">Naikkan</button>
-              </div>
-            </div>
-            <div className="text-sm text-gray-700 mt-2">
-              Status lokal: {isSpUsedLocal ? <span className="text-red-600">Duplikat</span> : <span className="text-green-700">Unik</span>}
-              {hasSheets && (<>
-                {' · '}<button onClick={()=> checkSpUniqueRemote(header.nomorSP)} className="underline">Cek unik ke Sheets</button>
-                {spRemoteStatus && <> — {spRemoteStatus}</>}
-              </>)}
-            </div>
-          </Card>
+          <OrderTypeAndSPCard
+  poType={poType}
+  setPoType={setPoType}
+  header={header}
+  setHeader={setHeader}
+  spAuto={spAuto}
+  setSpAuto={setSpAuto}
+  decrementSp={decrementSp}
+  incrementSp={incrementSp}
+  isSpUsedLocal={isSpUsedLocal}
+  spRemoteStatus={spRemoteStatus}
+  checkSpUniqueRemote={checkSpUniqueRemote}
+/>
 
           {showMeta && (
             <Card title="Identitas Fasilitas Kesehatan">
